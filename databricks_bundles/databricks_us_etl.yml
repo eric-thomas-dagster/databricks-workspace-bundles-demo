@@ -1,0 +1,55 @@
+# Databricks Asset Bundle Configuration - US Regional ETL
+# This configures the US data ingestion pipeline
+
+bundle:
+  name: us_data_platform
+
+targets:
+  prod:
+    mode: production
+    workspace:
+      host: ${DATABRICKS_US_HOST}
+
+  dev:
+    mode: development
+    workspace:
+      host: ${DATABRICKS_US_HOST}
+
+# US Regional ETL jobs
+resources:
+  jobs:
+    us_data_extract:
+      name: "US Regional Data Extract"
+
+      tasks:
+        - task_key: extract_us_customers
+          notebook_task:
+            notebook_path: /Workspace/etl/us/extract_customers
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_us_sales
+          notebook_task:
+            notebook_path: /Workspace/etl/us/extract_sales
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_us_products
+          notebook_task:
+            notebook_path: /Workspace/etl/us/extract_products
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_us_financials
+          notebook_task:
+            notebook_path: /Workspace/etl/us/extract_financials
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2

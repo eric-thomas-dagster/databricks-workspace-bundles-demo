@@ -1,0 +1,87 @@
+# US Regional ETL Asset Bundle - Uses official DatabricksAssetBundleComponent pattern
+# Properly subclasses the official component with demo mode support
+# Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
+type: databricks_workspace_bundles_demo.components.CustomDatabricksAssetBundleComponent
+
+attributes:
+  # Path to databricks.yml configuration for US ETL
+  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_us_etl.yml"
+
+  # Workspace connection
+  workspace:
+    host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
+    token: "{{ env.DATABRICKS_US_TOKEN | default('demo-token-us') }}"
+
+  # Compute configuration (serverless for this demo)
+  compute_config:
+    is_serverless: true
+
+  # Map Databricks task keys to Dagster asset specs
+  assets_by_task_key:
+    extract_us_customers:
+      - key: raw_customer_data_us
+        group_name: us_etl
+        owners: ["us-data-engineering@company.com"]
+        kinds: [deltalake, notebook, pyspark, table]
+        description: "Raw US customer master data from Salesforce and NetSuite"
+        metadata:
+          source_systems: ["Salesforce US", "NetSuite US"]
+          extraction_method: "REST API"
+          data_classification: "confidential"
+          region: "US"
+          gdpr_applicable: false
+          integration_type: "asset_bundle"
+          layer: "bronze"
+          task_type: "databricks_task"
+
+    extract_us_sales:
+      - key: raw_sales_orders_us
+        group_name: us_etl
+        owners: ["us-data-engineering@company.com"]
+        kinds: [deltalake, notebook, pyspark, table]
+        description: "Raw US sales order data including headers and line items"
+        metadata:
+          source_systems: ["ERP US", "E-commerce Platform US"]
+          extraction_method: "Database CDC"
+          data_classification: "confidential"
+          region: "US"
+          integration_type: "asset_bundle"
+          layer: "bronze"
+          task_type: "databricks_task"
+
+    extract_us_products:
+      - key: raw_product_catalog_us
+        group_name: us_etl
+        owners: ["us-data-engineering@company.com"]
+        kinds: [deltalake, notebook, pyspark, table]
+        description: "US product master data with SKUs, pricing, and categories"
+        metadata:
+          source_systems: ["PIM System US"]
+          extraction_method: "REST API"
+          data_classification: "internal"
+          region: "US"
+          integration_type: "asset_bundle"
+          layer: "bronze"
+          task_type: "databricks_task"
+
+    extract_us_financials:
+      - key: raw_financial_transactions_us
+        group_name: us_etl
+        owners: ["us-data-engineering@company.com"]
+        kinds: [deltalake, notebook, pyspark, table]
+        description: "US general ledger transactions and journal entries"
+        metadata:
+          source_systems: ["NetSuite US"]
+          extraction_method: "JDBC"
+          data_classification: "highly-confidential"
+          retention_years: 7
+          region: "US"
+          compliance_frameworks: ["SOX", "GAAP"]
+          integration_type: "asset_bundle"
+          layer: "bronze"
+          task_type: "databricks_task"
+
+requirements:
+  env:
+    - DATABRICKS_US_HOST
+    - DATABRICKS_US_TOKEN

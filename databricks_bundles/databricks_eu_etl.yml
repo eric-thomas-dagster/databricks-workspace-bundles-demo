@@ -1,0 +1,55 @@
+# Databricks Asset Bundle Configuration - EU Regional ETL
+# This configures the EU data ingestion pipeline
+
+bundle:
+  name: eu_data_platform
+
+targets:
+  prod:
+    mode: production
+    workspace:
+      host: ${DATABRICKS_EU_HOST}
+
+  dev:
+    mode: development
+    workspace:
+      host: ${DATABRICKS_EU_HOST}
+
+# EU Regional ETL jobs
+resources:
+  jobs:
+    eu_data_extract:
+      name: "EU Regional Data Extract"
+
+      tasks:
+        - task_key: extract_eu_customers
+          notebook_task:
+            notebook_path: /Workspace/etl/eu/extract_customers
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_eu_sales
+          notebook_task:
+            notebook_path: /Workspace/etl/eu/extract_sales
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_eu_products
+          notebook_task:
+            notebook_path: /Workspace/etl/eu/extract_products
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_eu_financials
+          notebook_task:
+            notebook_path: /Workspace/etl/eu/extract_financials
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2

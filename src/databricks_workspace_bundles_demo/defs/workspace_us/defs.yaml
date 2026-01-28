@@ -1,0 +1,69 @@
+# US Regional Workspace - Uses official DatabricksWorkspaceComponent pattern
+# Properly subclasses the official component with demo mode support
+# Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
+type: databricks_workspace_bundles_demo.components.CustomDatabricksWorkspaceComponent
+
+attributes:
+  # Workspace connection
+  workspace:
+    host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
+    token: "{{ env.DATABRICKS_US_TOKEN | default('demo-token-us') }}"
+
+  # Optional: Filter which jobs to include (commented out for demo)
+  # Optional: Filter which jobs to include by job ID
+  # databricks_filter:
+  #   include_jobs:
+  #     job_ids: [123, 456]  # Only include these job IDs
+
+  # Map Databricks task keys to Dagster asset specs
+  assets_by_task_key:
+    us_customer_analytics_task:
+      - key: customer_360_us
+        group_name: us_analytics
+        owners: ["us-analytics-team@company.com"]
+        deps: [raw_customer_data_us, raw_sales_orders_us]
+        kinds: [deltalake, sql, job, table]
+        description: "US customer 360 view aggregating CRM, e-commerce, and transactional data"
+        metadata:
+          layer: "silver"
+          update_frequency: "hourly"
+          data_classification: "confidential"
+          region: "US"
+          contains_pii: true
+          integration_type: "workspace_job"
+          task_type: "databricks_job"
+
+    us_sales_insights_task:
+      - key: sales_insights_us
+        group_name: us_analytics
+        owners: ["us-analytics-team@company.com"]
+        deps: [customer_360_us, raw_product_catalog_us]
+        kinds: [deltalake, sql, job, dashboard]
+        description: "US regional sales insights and performance dashboards"
+        metadata:
+          layer: "gold"
+          update_frequency: "daily"
+          region: "US"
+          dashboard_url: "https://bi.company.com/us-sales"
+          integration_type: "workspace_job"
+          task_type: "databricks_job"
+
+    us_financial_reporting_task:
+      - key: financial_summary_us
+        group_name: us_analytics
+        owners: ["us-finance-team@company.com"]
+        deps: [raw_financial_transactions_us, sales_insights_us]
+        kinds: [deltalake, sql, job, report]
+        description: "US regional financial summary with P&L and cash flow"
+        metadata:
+          layer: "gold"
+          update_frequency: "daily"
+          region: "US"
+          compliance_frameworks: ["SOX", "GAAP"]
+          integration_type: "workspace_job"
+          task_type: "databricks_job"
+
+requirements:
+  env:
+    - DATABRICKS_US_HOST
+    - DATABRICKS_US_TOKEN

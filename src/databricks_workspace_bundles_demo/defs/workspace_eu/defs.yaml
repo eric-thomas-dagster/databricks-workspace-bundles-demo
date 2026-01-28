@@ -1,0 +1,70 @@
+# EU Regional Workspace - Uses official DatabricksWorkspaceComponent pattern
+# Properly subclasses the official component with demo mode support
+# Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
+type: databricks_workspace_bundles_demo.components.CustomDatabricksWorkspaceComponent
+
+attributes:
+  # Workspace connection
+  workspace:
+    host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
+    token: "{{ env.DATABRICKS_EU_TOKEN | default('demo-token-eu') }}"
+
+  # Optional: Filter which jobs to include (commented out for demo)
+  # Optional: Filter which jobs to include by job ID
+  # databricks_filter:
+  #   include_jobs:
+  #     job_ids: [123, 456]  # Only include these job IDs
+
+  # Map Databricks task keys to Dagster asset specs
+  assets_by_task_key:
+    eu_customer_analytics_task:
+      - key: customer_360_eu
+        group_name: eu_analytics
+        owners: ["eu-analytics-team@company.com"]
+        deps: [raw_customer_data_eu, raw_sales_orders_eu]
+        kinds: [deltalake, sql, job, table]
+        description: "EU customer 360 view aggregating CRM, SAP, and transactional data"
+        metadata:
+          layer: "silver"
+          update_frequency: "hourly"
+          data_classification: "confidential"
+          region: "EU"
+          contains_pii: true
+          gdpr_compliant: true
+          integration_type: "workspace_job"
+          task_type: "databricks_job"
+
+    eu_sales_insights_task:
+      - key: sales_insights_eu
+        group_name: eu_analytics
+        owners: ["eu-analytics-team@company.com"]
+        deps: [customer_360_eu, raw_product_catalog_eu]
+        kinds: [deltalake, sql, job, dashboard]
+        description: "EU regional sales insights and performance dashboards"
+        metadata:
+          layer: "gold"
+          update_frequency: "daily"
+          region: "EU"
+          dashboard_url: "https://bi.company.com/eu-sales"
+          integration_type: "workspace_job"
+          task_type: "databricks_job"
+
+    eu_financial_reporting_task:
+      - key: financial_summary_eu
+        group_name: eu_analytics
+        owners: ["eu-finance-team@company.com"]
+        deps: [raw_financial_transactions_eu, sales_insights_eu]
+        kinds: [deltalake, sql, job, report]
+        description: "EU regional financial summary with P&L and cash flow"
+        metadata:
+          layer: "gold"
+          update_frequency: "daily"
+          region: "EU"
+          compliance_frameworks: ["IFRS", "GDPR"]
+          integration_type: "workspace_job"
+          task_type: "databricks_job"
+
+requirements:
+  env:
+    - DATABRICKS_EU_HOST
+    - DATABRICKS_EU_TOKEN

@@ -1,0 +1,88 @@
+# EU Regional ETL Asset Bundle - Uses official DatabricksAssetBundleComponent pattern
+# Properly subclasses the official component with demo mode support
+# Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
+type: databricks_workspace_bundles_demo.components.CustomDatabricksAssetBundleComponent
+
+attributes:
+  # Path to databricks.yml configuration for EU ETL
+  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_eu_etl.yml"
+
+  # Workspace connection
+  workspace:
+    host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
+    token: "{{ env.DATABRICKS_EU_TOKEN | default('demo-token-eu') }}"
+
+  # Compute configuration (serverless for this demo)
+  compute_config:
+    is_serverless: true
+
+  # Map Databricks task keys to Dagster asset specs
+  assets_by_task_key:
+    extract_eu_customers:
+      - key: raw_customer_data_eu
+        group_name: eu_etl
+        owners: ["eu-data-engineering@company.com"]
+        kinds: [deltalake, notebook, pyspark, table]
+        description: "Raw EU customer master data from Salesforce and SAP"
+        metadata:
+          source_systems: ["Salesforce EU", "SAP ECC"]
+          extraction_method: "REST API"
+          data_classification: "confidential"
+          region: "EU"
+          gdpr_applicable: true
+          integration_type: "asset_bundle"
+          layer: "bronze"
+          task_type: "databricks_task"
+
+    extract_eu_sales:
+      - key: raw_sales_orders_eu
+        group_name: eu_etl
+        owners: ["eu-data-engineering@company.com"]
+        kinds: [deltalake, notebook, pyspark, table]
+        description: "Raw EU sales order data including headers and line items"
+        metadata:
+          source_systems: ["SAP ECC", "E-commerce Platform EU"]
+          extraction_method: "Database CDC"
+          data_classification: "confidential"
+          region: "EU"
+          gdpr_applicable: true
+          integration_type: "asset_bundle"
+          layer: "bronze"
+          task_type: "databricks_task"
+
+    extract_eu_products:
+      - key: raw_product_catalog_eu
+        group_name: eu_etl
+        owners: ["eu-data-engineering@company.com"]
+        kinds: [deltalake, notebook, pyspark, table]
+        description: "EU product master data with SKUs, pricing, and categories"
+        metadata:
+          source_systems: ["PIM System EU"]
+          extraction_method: "REST API"
+          data_classification: "internal"
+          region: "EU"
+          integration_type: "asset_bundle"
+          layer: "bronze"
+          task_type: "databricks_task"
+
+    extract_eu_financials:
+      - key: raw_financial_transactions_eu
+        group_name: eu_etl
+        owners: ["eu-data-engineering@company.com"]
+        kinds: [deltalake, notebook, pyspark, table]
+        description: "EU general ledger transactions and journal entries"
+        metadata:
+          source_systems: ["SAP FI/CO"]
+          extraction_method: "JDBC"
+          data_classification: "highly-confidential"
+          retention_years: 7
+          region: "EU"
+          compliance_frameworks: ["IFRS", "GDPR"]
+          integration_type: "asset_bundle"
+          layer: "bronze"
+          task_type: "databricks_task"
+
+requirements:
+  env:
+    - DATABRICKS_EU_HOST
+    - DATABRICKS_EU_TOKEN
