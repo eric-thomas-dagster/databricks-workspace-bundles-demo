@@ -9,9 +9,9 @@ sources:
         description: "Raw US customer master data"
         meta:
           dagster:
-            asset_key: ["bronze", "raw_customer_data_us"]
+            asset_key: ["raw", "us", "customer_data"]
       - name: raw_sales_orders_us
         description: "Raw US sales order data"
         meta:
           dagster:
-            asset_key: ["bronze", "raw_sales_orders_us"]
+            asset_key: ["raw", "us", "sales_orders"]

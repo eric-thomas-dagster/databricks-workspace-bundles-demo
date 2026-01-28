@@ -9,9 +9,9 @@ sources:
         description: "Raw EU customer master data (GDPR-compliant)"
         meta:
           dagster:
-            asset_key: ["bronze", "raw_customer_data_eu"]
+            asset_key: ["raw", "eu", "customer_data"]
       - name: raw_sales_orders_eu
         description: "Raw EU sales order data"
         meta:
           dagster:
-            asset_key: ["bronze", "raw_sales_orders_eu"]
+            asset_key: ["raw", "eu", "sales_orders"]
