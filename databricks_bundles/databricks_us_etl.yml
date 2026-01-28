@@ -1,24 +1,25 @@
-# Databricks Asset Bundle Configuration - Shared ETL Pipeline
-# This shared bundle can be deployed to multiple regional workspaces
-# Demonstrates bundle reusability across regions
+# Databricks Asset Bundle Configuration - US Regional ETL
+# Deployed to US workspace from shared ETL pattern
 
 bundle:
-  name: shared_data_etl
+  name: us_data_etl
 
 targets:
   prod:
     mode: production
-    # Workspace host is configured per deployment in component defs
+    workspace:
+      host: ${DATABRICKS_US_HOST}
 
   dev:
     mode: development
-    # Workspace host is configured per deployment in component defs
+    workspace:
+      host: ${DATABRICKS_US_HOST}
 
-# Shared ETL extraction jobs - common across all regions
+# US Regional ETL extraction jobs
 resources:
   jobs:
-    regional_data_extract:
-      name: "Regional Data Extract"
+    us_regional_data_extract:
+      name: "US Regional Data Extract"
 
       tasks:
         - task_key: extract_customers

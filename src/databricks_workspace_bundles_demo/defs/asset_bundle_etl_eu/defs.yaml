@@ -1,11 +1,11 @@
-# EU Regional ETL Asset Bundle - Uses SHARED databricks_etl.yml bundle
-# Demonstrates bundle reusability - same bundle deployed to EU workspace
+# EU Regional ETL Asset Bundle - Uses databricks_eu_etl.yml
+# Follows shared ETL pattern deployed to EU workspace
 # Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
 type: databricks_workspace_bundles_demo.components.CustomDatabricksAssetBundleComponent
 
 attributes:
-  # Path to SHARED databricks.yml configuration (reused across regions)
-  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_etl.yml"
+  # Path to EU ETL databricks.yml configuration
+  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_eu_etl.yml"
 
   # Workspace connection
   workspace:
