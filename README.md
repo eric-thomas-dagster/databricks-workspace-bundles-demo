@@ -139,9 +139,12 @@ Assets are organized into groups by workspace for easier lineage navigation:
 |-------|--------|------|--------|-------------|
 | **us_etl** | US | Asset Bundle | 4 | Bronze layer data ingestion |
 | **us_analytics** | US | Workspace | 3 | Silver/gold analytics |
+| **us_dbt_analytics** | US | dbt | 2 | dbt customer transformations |
 | **eu_etl** | EU | Asset Bundle | 4 | Bronze layer data ingestion |
 | **eu_analytics** | EU | Workspace | 3 | Silver/gold analytics |
+| **eu_dbt_analytics** | EU | dbt | 2 | dbt customer transformations |
 | **global_analytics** | Global | Workspace | 4 | Cross-regional aggregation |
+| **external_systems** | External | Mock | 2 | Downstream BI dashboards and warehouses |
 
 **Benefits:**
 - **Visual Organization**: Lineage graph clearly shows regional boundaries
@@ -153,23 +156,27 @@ Assets are organized into groups by workspace for easier lineage navigation:
 
 The demo includes comprehensive orchestration showcasing Dagster's coordination capabilities:
 
-**8 Jobs** demonstrating different orchestration patterns:
+**11 Jobs** demonstrating different orchestration patterns:
 - **Regional ETL Jobs**: `us_etl_pipeline`, `eu_etl_pipeline` (asset bundle execution)
 - **Regional Analytics Jobs**: `us_analytics_pipeline`, `eu_analytics_pipeline` (workspace jobs)
+- **dbt Transformation Jobs**: `us_dbt_pipeline`, `eu_dbt_pipeline` (dbt model execution)
+- **External Systems Job**: `external_systems_refresh` (downstream BI/warehouse triggers)
 - **Global Consolidation**: `global_consolidation_pipeline` (cross-regional dependencies)
 - **End-to-End Jobs**: `us_regional_pipeline`, `eu_regional_pipeline`, `end_to_end_pipeline`
 
-**6 Schedules** for time-based orchestration:
+**8 Schedules** for time-based orchestration:
 - **Hourly ETL**: `us_etl_hourly`, `eu_etl_hourly` (keep bronze layer fresh)
 - **Daily Analytics**: `us_analytics_daily`, `eu_analytics_daily` (refresh dashboards)
+- **Daily dbt**: `us_dbt_daily`, `eu_dbt_daily` (run dbt transformations)
 - **Daily Global**: `global_consolidation_daily` (consolidate regional data)
 - **Weekly Refresh**: `weekly_full_refresh` (complete system backfill)
 
-**4 Sensors** for event-driven orchestration:
+**5 Sensors** for event-driven orchestration:
 - **`regional_analytics_completion_sensor`**: Multi-asset sensor that triggers global consolidation when both US and EU analytics complete (demonstrates cross-workspace coordination)
 - **`us_etl_completion_sensor`**: Triggers US analytics immediately when US ETL completes (demonstrates low-latency event-driven pattern)
 - **`eu_etl_completion_sensor`**: Triggers EU analytics immediately when EU ETL completes (demonstrates low-latency event-driven pattern)
 - **`cross_regional_dependency_monitor`**: Monitoring sensor that tracks cross-regional pipeline health without triggering jobs
+- **`trigger_downstream_systems`**: Automatically triggers external dashboards and warehouses when global consolidation completes
 
 **Orchestration Patterns:**
 - Cross-workspace coordination across US, EU, and Global
@@ -185,6 +192,47 @@ All components support demo mode via the `DAGSTER_DEMO_MODE` environment variabl
 - Test locally with simulated job execution
 - Components properly subclass official dagster-databricks components
 - Understand cross-regional architecture without infrastructure
+
+### 7. dbt Transformations
+
+Regional dbt projects for customer analytics demonstrating dbt integration with Databricks:
+
+**US dbt Analytics** (`dbt_projects/us_analytics_dbt/`):
+- **us_customer_metrics** (Silver): Customer lifetime value and order history aggregated from bronze layer
+- **us_customer_cohorts** (Gold): Customer segmentation and cohort analysis for retention tracking
+
+**EU dbt Analytics** (`dbt_projects/eu_analytics_dbt/`):
+- Same dbt models as US (customer_metrics, customer_cohorts) with GDPR-compliant processing
+- Separate dbt project maintains data sovereignty
+- Assets prefixed with `eu_` to avoid naming conflicts
+
+**Integration Pattern**:
+- Uses `DbtProjectComponent` with demo mode support and custom translation
+- Translation config adds regional prefixes (`us_` and `eu_`) to dbt model names
+- Each dbt model becomes a Dagster asset with automatic lineage tracking
+- Dependencies flow from bronze assets → dbt silver → dbt gold
+- Executes via PipesDatabricksClient on Databricks (or simulated in demo mode)
+
+**Benefits**:
+- **Unified Lineage**: dbt models appear alongside Databricks assets in the same DAG
+- **Flexible Tooling**: Combine dbt's SQL-based transformations with Databricks notebooks
+- **Team Productivity**: dbt teams can use familiar workflows while Dagster handles orchestration
+
+### 8. Downstream System Triggering
+
+Demonstrates triggering external systems when Databricks processing completes, a common pattern for multi-system architectures:
+
+**Mock External Systems**:
+- **Executive Dashboard**: Tableau-style BI dashboard that refreshes when global consolidation completes
+- **Data Warehouse Sync**: Snowflake-style data copy triggered after global processing
+
+**How It Works**:
+- `trigger_downstream_systems` sensor monitors all global consolidation assets
+- When all global assets materialize, sensor automatically triggers downstream refreshes
+- External systems appear in lineage graph as natural asset dependencies
+- Shows event-driven pattern without requiring real external services
+
+**Pattern**: This demonstrates how customers trigger downstream systems (BI dashboards, data warehouses, reporting tools) based on Databricks job completion. In production, this would call real APIs (Tableau REST API, Snowflake procedures, Looker refresh endpoints, etc.).
 
 ## Quick Start
 
@@ -248,9 +296,9 @@ This script will:
 
 7. In the UI, navigate to Assets to see the lineage graph with asset groups organized by region/workspace
 
-## Assets Overview (18 Total Assets)
+## Assets Overview (26 Total Assets)
 
-### US Region (7 Assets)
+### US Region (9 Assets)
 
 **US ETL Bundle** (Bronze Layer - 4 Assets):
 | Asset | Source Systems | Description |
@@ -267,7 +315,13 @@ This script will:
 | `sales_insights_us` | customer_360_us, raw_product_catalog_us | US sales insights and dashboards (gold) |
 | `financial_summary_us` | raw_financial_transactions_us, sales_insights_us | US financial summary with P&L (gold) |
 
-### EU Region (7 Assets)
+**US dbt Analytics** (dbt Silver/Gold Layer - 2 Assets):
+| Asset | Type | Dependencies | Description |
+|-------|------|--------------|-------------|
+| `us_customer_metrics` | dbt (silver) | raw_customer_data_us, raw_sales_orders_us | Customer lifetime value and order history |
+| `us_customer_cohorts` | dbt (gold) | us_customer_metrics | Customer segmentation and cohort analysis |
+
+### EU Region (9 Assets)
 
 **EU ETL Bundle** (Bronze Layer - 4 Assets):
 | Asset | Source Systems | Description |
@@ -284,6 +338,12 @@ This script will:
 | `sales_insights_eu` | customer_360_eu, raw_product_catalog_eu | EU sales insights and dashboards (gold) |
 | `financial_summary_eu` | raw_financial_transactions_eu, sales_insights_eu | EU financial summary with P&L (gold) |
 
+**EU dbt Analytics** (dbt Silver/Gold Layer - 2 Assets):
+| Asset | Type | Dependencies | Description |
+|-------|------|--------------|-------------|
+| `eu_customer_metrics` | dbt (silver) | raw_customer_data_eu, raw_sales_orders_eu | Customer lifetime value and order history (GDPR-compliant) |
+| `eu_customer_cohorts` | dbt (gold) | eu_customer_metrics | Customer segmentation and cohort analysis (GDPR-compliant) |
+
 ### Global Region (4 Assets)
 
 **Global Analytics Workspace** (Gold Layer - 4 Assets with Cross-Regional Dependencies):
@@ -294,9 +354,28 @@ This script will:
 | `global_financial_summary` | **financial_summary_us, financial_summary_eu** | Global consolidated financials with currency normalization (cross-regional) |
 | `cross_regional_analysis` | **sales_insights_us, sales_insights_eu, customer_360_us, customer_360_eu** | Cross-regional performance comparison and market analysis |
 
+### External Systems (2 Assets)
+
+**Mock External Systems** (Triggered After Global Consolidation - 2 Assets):
+| Asset | Type | Dependencies | Description |
+|-------|------|--------------|-------------|
+| `executive_dashboard` | External BI (Tableau) | global_customer_master, global_sales_insights, global_financial_summary | Executive dashboard refresh representing Tableau/Power BI/Looker |
+| `data_warehouse_sync` | External Warehouse (Snowflake) | global_customer_master, global_sales_insights, global_financial_summary | Data warehouse sync representing Snowflake/Redshift/BigQuery |
+
+These assets represent downstream systems that are automatically triggered when Databricks processing completes, demonstrating the pattern of event-driven external system integration.
+
 ## Component Configuration
 
 All three teams use the same `CustomDatabricksAssetBundleComponent` pattern, which properly subclasses the official `DatabricksAssetBundleComponent`:
+
+> **📝 Demo Mode Note**: This demo uses **custom component subclasses** (`CustomDatabricksAssetBundleComponent`, `CustomDatabricksWorkspaceComponent`, `CustomDbtProjectComponent`) to enable running the demo without real Databricks credentials via `DAGSTER_DEMO_MODE=true`. These custom components add demo mode simulation but otherwise delegate to the official Dagster components.
+>
+> **In a real production scenario**, you would use the official components directly:
+> - `dagster_databricks.DatabricksAssetBundleComponent`
+> - `dagster_databricks.DatabricksWorkspaceComponent`
+> - `dagster_dbt.DbtProjectComponent`
+>
+> The custom components in this demo also add `databricks_workspace_host` metadata to all assets for demonstration purposes, but this is optional functionality not required for production use.
 
 ```yaml
 # Example: asset_bundle_etl_us/defs.yaml

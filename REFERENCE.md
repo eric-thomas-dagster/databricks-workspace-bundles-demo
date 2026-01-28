@@ -29,7 +29,7 @@ uv run dagster job execute -j end_to_end_pipeline
 
 ## Orchestration Components
 
-### Jobs (8 Total)
+### Jobs (11 Total)
 
 | Job | Selection | Purpose |
 |-----|-----------|---------|
@@ -37,12 +37,15 @@ uv run dagster job execute -j end_to_end_pipeline
 | `eu_etl_pipeline` | `eu_etl` group | EU bronze layer extraction |
 | `us_analytics_pipeline` | `us_analytics` group | US silver/gold analytics |
 | `eu_analytics_pipeline` | `eu_analytics` group | EU silver/gold analytics |
+| `us_dbt_pipeline` | `us_dbt_analytics` group | US dbt transformations |
+| `eu_dbt_pipeline` | `eu_dbt_analytics` group | EU dbt transformations |
 | `global_consolidation_pipeline` | `global_analytics` group | Cross-regional consolidation |
+| `external_systems_refresh` | `external_systems` group | Refresh downstream dashboards/warehouses |
 | `us_regional_pipeline` | `us_etl` + `us_analytics` | Complete US pipeline |
 | `eu_regional_pipeline` | `eu_etl` + `eu_analytics` | Complete EU pipeline |
 | `end_to_end_pipeline` | All groups | Complete multi-region pipeline |
 
-### Schedules (6 Total)
+### Schedules (8 Total)
 
 | Schedule | Cron | Status | Purpose |
 |----------|------|--------|---------|
@@ -50,10 +53,12 @@ uv run dagster job execute -j end_to_end_pipeline
 | `eu_etl_hourly` | `0 * * * *` | Running | Hourly EU ETL |
 | `us_analytics_daily` | `0 2 * * *` | Running | Daily US analytics at 2 AM |
 | `eu_analytics_daily` | `0 2 * * *` | Running | Daily EU analytics at 2 AM |
+| `us_dbt_daily` | `0 3 * * *` | Running | Daily US dbt at 3 AM (after ETL) |
+| `eu_dbt_daily` | `0 3 * * *` | Running | Daily EU dbt at 3 AM (after ETL) |
 | `global_consolidation_daily` | `0 4 * * *` | Running | Daily global at 4 AM |
 | `weekly_full_refresh` | `0 1 * * 0` | Stopped | Weekly Sunday refresh (manual) |
 
-### Sensors (4 Total)
+### Sensors (5 Total)
 
 | Sensor | Type | Status | Purpose |
 |--------|------|--------|---------|
@@ -61,16 +66,20 @@ uv run dagster job execute -j end_to_end_pipeline
 | `us_etl_completion_sensor` | Multi-asset | Stopped | Event-driven US analytics trigger |
 | `eu_etl_completion_sensor` | Multi-asset | Stopped | Event-driven EU analytics trigger |
 | `cross_regional_dependency_monitor` | Multi-asset | Running | Monitors pipeline health |
+| `trigger_downstream_systems` | Multi-asset | Running | Auto-triggers BI dashboards when global data ready |
 
-## Asset Groups (5 Total)
+## Asset Groups (8 Total)
 
 | Group | Region | Type | Asset Count | Description |
 |-------|--------|------|-------------|-------------|
 | `us_etl` | US | Asset Bundle | 4 | Bronze layer data ingestion |
 | `us_analytics` | US | Workspace | 3 | Silver/gold analytics |
+| `us_dbt_analytics` | US | dbt Project | 2 | dbt customer transformations |
 | `eu_etl` | EU | Asset Bundle | 4 | Bronze layer data ingestion |
 | `eu_analytics` | EU | Workspace | 3 | Silver/gold analytics |
+| `eu_dbt_analytics` | EU | dbt Project | 2 | dbt customer transformations |
 | `global_analytics` | Global | Workspace | 4 | Cross-regional aggregation |
+| `external_systems` | External | Mock Assets | 2 | Downstream BI dashboards and warehouses |
 
 ## Environment Variables
 

@@ -19,7 +19,7 @@ attributes:
   # Map Databricks task keys to Dagster asset specs
   assets_by_task_key:
     extract_us_customers:
-      - key: raw_customer_data_us
+      - key: raw/us/customer_data
         group_name: us_etl
         owners: ["us-data-engineering@company.com"]
         kinds: [deltalake, notebook, pyspark, table]
@@ -33,9 +33,10 @@ attributes:
           integration_type: "asset_bundle"
           layer: "bronze"
           task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
     extract_us_sales:
-      - key: raw_sales_orders_us
+      - key: raw/us/sales_orders
         group_name: us_etl
         owners: ["us-data-engineering@company.com"]
         kinds: [deltalake, notebook, pyspark, table]
@@ -48,9 +49,10 @@ attributes:
           integration_type: "asset_bundle"
           layer: "bronze"
           task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
     extract_us_products:
-      - key: raw_product_catalog_us
+      - key: raw/us/product_catalog
         group_name: us_etl
         owners: ["us-data-engineering@company.com"]
         kinds: [deltalake, notebook, pyspark, table]
@@ -63,9 +65,10 @@ attributes:
           integration_type: "asset_bundle"
           layer: "bronze"
           task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
     extract_us_financials:
-      - key: raw_financial_transactions_us
+      - key: raw/us/financial_transactions
         group_name: us_etl
         owners: ["us-data-engineering@company.com"]
         kinds: [deltalake, notebook, pyspark, table]
@@ -80,6 +83,7 @@ attributes:
           integration_type: "asset_bundle"
           layer: "bronze"
           task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
 requirements:
   env:

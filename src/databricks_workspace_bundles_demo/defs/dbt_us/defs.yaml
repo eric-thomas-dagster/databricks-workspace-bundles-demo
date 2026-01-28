@@ -1,0 +1,13 @@
+type: databricks_workspace_bundles_demo.components.CustomDbtProjectComponent
+
+attributes:
+  # Path to dbt project
+  project: "{{ project_root }}/dbt_projects/us_analytics_dbt"
+
+  # Translation: organize by medallion layer + region, clean names without prefix/suffix
+  # customer_metrics is silver layer, customer_cohorts is gold layer
+  # Removes raw_ prefix and _us suffix from source names for cleaner hierarchy
+  # NOTE: databricks_workspace_host metadata is automatically added based on group_name
+  translation:
+    key: "{% if node.resource_type == 'source' %}raw/us/{{ node.name | replace('raw_', '') | replace('_us', '') }}{% elif 'cohort' in node.name %}gold/us/{{ node.name }}{% else %}silver/us/{{ node.name }}{% endif %}"
+    group_name: us_dbt_analytics

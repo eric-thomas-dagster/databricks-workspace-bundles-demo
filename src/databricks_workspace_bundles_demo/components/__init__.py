@@ -10,8 +10,10 @@ When demo_mode=true, they simulate execution for local development.
 
 from .databricks_workspace_component import CustomDatabricksWorkspaceComponent
 from .databricks_asset_bundle_component import CustomDatabricksAssetBundleComponent
+from .databricks_dbt_component import CustomDbtProjectComponent
 
 __all__ = [
     "CustomDatabricksWorkspaceComponent",
     "CustomDatabricksAssetBundleComponent",
+    "CustomDbtProjectComponent",
 ]

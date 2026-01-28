@@ -19,10 +19,10 @@ attributes:
   # Map Databricks task keys to Dagster asset specs
   assets_by_task_key:
     global_customer_consolidation_task:
-      - key: global_customer_master
+      - key: gold/global/customer_master
         group_name: global_analytics
         owners: ["global-analytics-team@company.com"]
-        deps: [customer_360_us, customer_360_eu]  # Cross-regional dependencies
+        deps: [silver/us/customer_360, silver/eu/customer_360, gold/us/customer_cohorts, gold/eu/customer_cohorts]  # Cross-regional dependencies including dbt
         kinds: [deltalake, sql, job, table]
         description: "Global unified customer master data combining US and EU regions"
         metadata:
@@ -35,12 +35,13 @@ attributes:
           gdpr_compliant: true
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_GLOBAL_HOST | default('https://global.databricks.com') }}"
 
     global_sales_analytics_task:
-      - key: global_sales_insights
+      - key: gold/global/sales_insights
         group_name: global_analytics
         owners: ["global-analytics-team@company.com"]
-        deps: [sales_insights_us, sales_insights_eu, global_customer_master]  # Cross-regional dependencies
+        deps: [gold/us/sales_insights, gold/eu/sales_insights, gold/global/customer_master]  # Cross-regional dependencies
         kinds: [deltalake, sql, job, dashboard]
         description: "Global sales performance with cross-regional comparisons and consolidated metrics"
         metadata:
@@ -51,12 +52,13 @@ attributes:
           cross_regional_analysis: true
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_GLOBAL_HOST | default('https://global.databricks.com') }}"
 
     global_financial_consolidation_task:
-      - key: global_financial_summary
+      - key: gold/global/financial_summary
         group_name: global_analytics
         owners: ["global-finance-team@company.com"]
-        deps: [financial_summary_us, financial_summary_eu]  # Cross-regional dependencies
+        deps: [gold/us/financial_summary, gold/eu/financial_summary]  # Cross-regional dependencies
         kinds: [deltalake, sql, job, report]
         description: "Global consolidated financial statements with currency normalization"
         metadata:
@@ -68,12 +70,13 @@ attributes:
           consolidation_method: "equity"
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_GLOBAL_HOST | default('https://global.databricks.com') }}"
 
     cross_regional_comparison_task:
-      - key: cross_regional_analysis
+      - key: gold/global/cross_regional_analysis
         group_name: global_analytics
         owners: ["global-analytics-team@company.com"]
-        deps: [sales_insights_us, sales_insights_eu, customer_360_us, customer_360_eu]  # Multiple cross-regional dependencies
+        deps: [gold/us/sales_insights, gold/eu/sales_insights, silver/us/customer_360, silver/eu/customer_360]  # Multiple cross-regional dependencies
         kinds: [deltalake, sql, job, dashboard]
         description: "Cross-regional performance comparison and market analysis"
         metadata:
@@ -84,6 +87,7 @@ attributes:
           analysis_type: "comparative"
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_GLOBAL_HOST | default('https://global.databricks.com') }}"
 
 requirements:
   env:

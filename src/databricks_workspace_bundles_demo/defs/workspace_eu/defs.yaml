@@ -18,10 +18,10 @@ attributes:
   # Map Databricks task keys to Dagster asset specs
   assets_by_task_key:
     eu_customer_analytics_task:
-      - key: customer_360_eu
+      - key: silver/eu/customer_360
         group_name: eu_analytics
         owners: ["eu-analytics-team@company.com"]
-        deps: [raw_customer_data_eu, raw_sales_orders_eu]
+        deps: [raw/eu/customer_data, raw/eu/sales_orders]
         kinds: [deltalake, sql, job, table]
         description: "EU customer 360 view aggregating CRM, SAP, and transactional data"
         metadata:
@@ -33,12 +33,13 @@ attributes:
           gdpr_compliant: true
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
 
     eu_sales_insights_task:
-      - key: sales_insights_eu
+      - key: gold/eu/sales_insights
         group_name: eu_analytics
         owners: ["eu-analytics-team@company.com"]
-        deps: [customer_360_eu, raw_product_catalog_eu]
+        deps: [silver/eu/customer_360, raw/eu/product_catalog]
         kinds: [deltalake, sql, job, dashboard]
         description: "EU regional sales insights and performance dashboards"
         metadata:
@@ -48,12 +49,13 @@ attributes:
           dashboard_url: "https://bi.company.com/eu-sales"
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
 
     eu_financial_reporting_task:
-      - key: financial_summary_eu
+      - key: gold/eu/financial_summary
         group_name: eu_analytics
         owners: ["eu-finance-team@company.com"]
-        deps: [raw_financial_transactions_eu, sales_insights_eu]
+        deps: [raw/eu/financial_transactions, gold/eu/sales_insights]
         kinds: [deltalake, sql, job, report]
         description: "EU regional financial summary with P&L and cash flow"
         metadata:
@@ -63,6 +65,7 @@ attributes:
           compliance_frameworks: ["IFRS", "GDPR"]
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
 
 requirements:
   env:

@@ -1,0 +1,11 @@
+us_analytics_databricks:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      catalog: us_catalog
+      schema: analytics
+      host: "{{ env_var('DATABRICKS_US_HOST') }}"
+      http_path: /sql/1.0/warehouses/your-warehouse-id
+      token: "{{ env_var('DATABRICKS_US_TOKEN') }}"
+      threads: 4

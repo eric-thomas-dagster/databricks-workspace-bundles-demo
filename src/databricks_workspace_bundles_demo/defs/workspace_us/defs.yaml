@@ -18,10 +18,10 @@ attributes:
   # Map Databricks task keys to Dagster asset specs
   assets_by_task_key:
     us_customer_analytics_task:
-      - key: customer_360_us
+      - key: silver/us/customer_360
         group_name: us_analytics
         owners: ["us-analytics-team@company.com"]
-        deps: [raw_customer_data_us, raw_sales_orders_us]
+        deps: [raw/us/customer_data, raw/us/sales_orders]
         kinds: [deltalake, sql, job, table]
         description: "US customer 360 view aggregating CRM, e-commerce, and transactional data"
         metadata:
@@ -32,12 +32,13 @@ attributes:
           contains_pii: true
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
     us_sales_insights_task:
-      - key: sales_insights_us
+      - key: gold/us/sales_insights
         group_name: us_analytics
         owners: ["us-analytics-team@company.com"]
-        deps: [customer_360_us, raw_product_catalog_us]
+        deps: [silver/us/customer_360, raw/us/product_catalog]
         kinds: [deltalake, sql, job, dashboard]
         description: "US regional sales insights and performance dashboards"
         metadata:
@@ -47,12 +48,13 @@ attributes:
           dashboard_url: "https://bi.company.com/us-sales"
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
     us_financial_reporting_task:
-      - key: financial_summary_us
+      - key: gold/us/financial_summary
         group_name: us_analytics
         owners: ["us-finance-team@company.com"]
-        deps: [raw_financial_transactions_us, sales_insights_us]
+        deps: [raw/us/financial_transactions, gold/us/sales_insights]
         kinds: [deltalake, sql, job, report]
         description: "US regional financial summary with P&L and cash flow"
         metadata:
@@ -62,6 +64,7 @@ attributes:
           compliance_frameworks: ["SOX", "GAAP"]
           integration_type: "workspace_job"
           task_type: "databricks_job"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
 requirements:
   env:

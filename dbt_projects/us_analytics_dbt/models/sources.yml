@@ -1,0 +1,17 @@
+version: 2
+
+# Map dbt sources to existing Dagster assets using meta.dagster.asset_key
+sources:
+  - name: dagster
+    description: "Upstream Dagster assets from Databricks ETL bundles"
+    tables:
+      - name: raw_customer_data_us
+        description: "Raw US customer master data"
+        meta:
+          dagster:
+            asset_key: ["bronze", "raw_customer_data_us"]
+      - name: raw_sales_orders_us
+        description: "Raw US sales order data"
+        meta:
+          dagster:
+            asset_key: ["bronze", "raw_sales_orders_us"]

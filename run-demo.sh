@@ -1,7 +1,7 @@
 #!/bin/bash
-# Quick start script for running the SAP Databricks regional demo in demo mode
+# Quick start script for running the Databricks Multi-Workspace demo in demo mode
 
-# Set demo mode environment variables for regional architecture
+# Set demo mode environment variables for multi-workspace architecture
 export DAGSTER_DEMO_MODE=true
 export DATABRICKS_US_HOST='https://us.databricks.com'
 export DATABRICKS_US_TOKEN='demo-token-us'
@@ -10,16 +10,16 @@ export DATABRICKS_EU_TOKEN='demo-token-eu'
 export DATABRICKS_GLOBAL_HOST='https://global.databricks.com'
 export DATABRICKS_GLOBAL_TOKEN='demo-token-global'
 
-echo "=========================================="
-echo "SAP Databricks Regional Demo - Quick Start"
-echo "=========================================="
+echo "============================================================"
+echo "Databricks Multi-Workspace & Asset Bundles Demo - Quick Start"
+echo "============================================================"
 echo ""
 echo "Architecture:"
 echo "  • Regional Workspaces:"
-echo "    - US Workspace (ETL Bundle + Analytics)"
-echo "    - EU Workspace (ETL Bundle + Analytics)"
+echo "    - US Workspace (ETL Bundle + Analytics + dbt)"
+echo "    - EU Workspace (ETL Bundle + Analytics + dbt)"
 echo "  • Global Workspace (Cross-regional aggregation)"
-echo "  • 18 total assets across 3 regions"
+echo "  • 24 total assets across 3 workspaces + external systems"
 echo ""
 echo "Environment:"
 echo "  DAGSTER_DEMO_MODE=${DAGSTER_DEMO_MODE}"
@@ -28,7 +28,7 @@ echo "  DATABRICKS_EU_HOST=${DATABRICKS_EU_HOST}"
 echo "  DATABRICKS_GLOBAL_HOST=${DATABRICKS_GLOBAL_HOST}"
 echo ""
 echo "Validating configuration..."
-uv run dg check defs
+uv run python -c "from databricks_workspace_bundles_demo.definitions import defs; defs(); print('✓ Definitions loaded successfully')"
 
 if [ $? -eq 0 ]; then
     echo ""

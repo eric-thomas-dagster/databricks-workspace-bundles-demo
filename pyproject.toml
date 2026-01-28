@@ -6,6 +6,9 @@ dependencies = [
     "dagster==1.12.12",
     "dagster-databricks>=0.28.12",
     "databricks-sdk>=0.60.0",
+    "dagster-dbt>=0.25.0",
+    "dbt-core>=1.8.0",
+    "dbt-databricks>=1.8.0",
 ]
 
 [dependency-groups]
