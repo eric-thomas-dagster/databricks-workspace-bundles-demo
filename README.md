@@ -60,9 +60,9 @@ This project demonstrates how Dagster orchestrates complex data workflows across
     ▼           ▼             ▼           ▼                     │
 ┌─────────────────┐     ┌─────────────────┐                    │
 │ Silver/Gold(US) │     │ Silver/Gold(EU) │                    │
-│ - Customer360US │     │ - Customer360EU │                    │
-│ - SalesInsightsUS│    │ - SalesInsightsEU│                   │
-│ - FinSummary US │     │ - FinSummary EU │                    │
+│ - Customer 360  │     │ - Customer 360  │                    │
+│ - Sales Insights│     │ - Sales Insights│                    │
+│ - Financial Sum │     │ - Financial Sum │                    │
 └─────────────────┘     └─────────────────┘                    │
     │                           │                               │
     └───────────────┬───────────┘                               │
@@ -119,9 +119,9 @@ This demo shows **regional data processing** with separate workspaces per region
 ### 2. Cross-Regional Dependencies
 
 The demo includes realistic cross-regional dependencies:
-- **Global Customer Master** depends on `customer_360_us` AND `customer_360_eu`
-- **Global Sales Insights** depends on `sales_insights_us` AND `sales_insights_eu`
-- **Global Financial Summary** depends on `financial_summary_us` AND `financial_summary_eu`
+- **Global Customer Master** depends on `silver/us/customer_360` AND `silver/eu/customer_360`
+- **Global Sales Insights** depends on `gold/us/sales_insights` AND `gold/eu/sales_insights`
+- **Global Financial Summary** depends on `gold/us/financial_summary` AND `gold/eu/financial_summary`
 - **Cross-Regional Analysis** depends on multiple US and EU assets
 - Demonstrates unified lineage tracking across regional boundaries
 
@@ -311,9 +311,9 @@ This script will:
 **US Analytics Workspace** (Silver/Gold Layer - 3 Assets):
 | Asset | Dependencies | Description |
 |-------|--------------|-------------|
-| `customer_360_us` | raw_customer_data_us, raw_sales_orders_us | US customer 360 view (silver) |
-| `sales_insights_us` | customer_360_us, raw_product_catalog_us | US sales insights and dashboards (gold) |
-| `financial_summary_us` | raw_financial_transactions_us, sales_insights_us | US financial summary with P&L (gold) |
+| `silver/us/customer_360` | raw_customer_data_us, raw_sales_orders_us | US customer 360 view (silver) |
+| `gold/us/sales_insights` | silver/us/customer_360, raw_product_catalog_us | US sales insights and dashboards (gold) |
+| `gold/us/financial_summary` | raw_financial_transactions_us, gold/us/sales_insights | US financial summary with P&L (gold) |
 
 **US dbt Analytics** (dbt Silver/Gold Layer - 2 Assets):
 | Asset | Type | Dependencies | Description |
@@ -334,9 +334,9 @@ This script will:
 **EU Analytics Workspace** (Silver/Gold Layer - 3 Assets):
 | Asset | Dependencies | Description |
 |-------|--------------|-------------|
-| `customer_360_eu` | raw_customer_data_eu, raw_sales_orders_eu | EU customer 360 view with GDPR compliance (silver) |
-| `sales_insights_eu` | customer_360_eu, raw_product_catalog_eu | EU sales insights and dashboards (gold) |
-| `financial_summary_eu` | raw_financial_transactions_eu, sales_insights_eu | EU financial summary with P&L (gold) |
+| `silver/eu/customer_360` | raw_customer_data_eu, raw_sales_orders_eu | EU customer 360 view with GDPR compliance (silver) |
+| `gold/eu/sales_insights` | silver/eu/customer_360, raw_product_catalog_eu | EU sales insights and dashboards (gold) |
+| `gold/eu/financial_summary` | raw_financial_transactions_eu, gold/eu/sales_insights | EU financial summary with P&L (gold) |
 
 **EU dbt Analytics** (dbt Silver/Gold Layer - 2 Assets):
 | Asset | Type | Dependencies | Description |
@@ -349,18 +349,18 @@ This script will:
 **Global Analytics Workspace** (Gold Layer - 4 Assets with Cross-Regional Dependencies):
 | Asset | Dependencies | Description |
 |-------|--------------|-------------|
-| `global_customer_master` | **customer_360_us, customer_360_eu** | Unified global customer master (cross-regional) |
-| `global_sales_insights` | **sales_insights_us, sales_insights_eu**, global_customer_master | Consolidated global sales performance (cross-regional) |
-| `global_financial_summary` | **financial_summary_us, financial_summary_eu** | Global consolidated financials with currency normalization (cross-regional) |
-| `cross_regional_analysis` | **sales_insights_us, sales_insights_eu, customer_360_us, customer_360_eu** | Cross-regional performance comparison and market analysis |
+| `gold/global/customer_master` | **silver/us/customer_360, silver/eu/customer_360** | Unified global customer master (cross-regional) |
+| `gold/global/sales_insights` | **gold/us/sales_insights, gold/eu/sales_insights**, gold/global/customer_master | Consolidated global sales performance (cross-regional) |
+| `gold/global/financial_summary` | **gold/us/financial_summary, gold/eu/financial_summary** | Global consolidated financials with currency normalization (cross-regional) |
+| `gold/global/cross_regional_analysis` | **gold/us/sales_insights, gold/eu/sales_insights, silver/us/customer_360, silver/eu/customer_360** | Cross-regional performance comparison and market analysis |
 
 ### External Systems (2 Assets)
 
 **Mock External Systems** (Triggered After Global Consolidation - 2 Assets):
 | Asset | Type | Dependencies | Description |
 |-------|------|--------------|-------------|
-| `executive_dashboard` | External BI (Tableau) | global_customer_master, global_sales_insights, global_financial_summary | Executive dashboard refresh representing Tableau/Power BI/Looker |
-| `data_warehouse_sync` | External Warehouse (Snowflake) | global_customer_master, global_sales_insights, global_financial_summary | Data warehouse sync representing Snowflake/Redshift/BigQuery |
+| `dashboards/executive_dashboard` | External BI (Tableau) | gold/global/customer_master, gold/global/sales_insights, gold/global/financial_summary | Executive dashboard refresh representing Tableau/Power BI/Looker |
+| `data_warehouse/snowflake_sync` | External Warehouse (Snowflake) | gold/global/customer_master, gold/global/sales_insights, gold/global/financial_summary | Data warehouse sync representing Snowflake/Redshift/BigQuery |
 
 These assets represent downstream systems that are automatically triggered when Databricks processing completes, demonstrating the pattern of event-driven external system integration.
 
@@ -397,9 +397,9 @@ attributes:
   # Map Databricks task keys to Dagster asset specs
   assets_by_task_key:
     customer_analytics_task:
-      - key: customer_360_view
+      - key: [silver, us, customer_360]
         owners: ["analytics-team@company.com"]
-        deps: [raw_customer_data, raw_sales_orders]
+        deps: [[bronze, us, raw_customer_data], [bronze, us, raw_sales_orders]]
         description: "Comprehensive 360-degree customer view"
 ```
 
@@ -544,7 +544,7 @@ Once you start the Dagster UI (`uv run dg dev`), you'll see:
 3. **Lineage Graph**: The asset graph visually separates assets by group, making regional boundaries clear
 4. **Cross-Regional Dependencies**: Dependencies that cross group boundaries (e.g., global_analytics → us_analytics) are clearly visible
 
-**Example**: Viewing the `global_customer_master` asset will show its dependencies on both `customer_360_us` (us_analytics group) and `customer_360_eu` (eu_analytics group), making the cross-regional aggregation immediately obvious.
+**Example**: Viewing the `gold/global/customer_master` asset will show its dependencies on both `silver/us/customer_360` (us_analytics group) and `silver/eu/customer_360` (eu_analytics group), making the cross-regional aggregation immediately obvious.
 
 ### Need More Details?
 
@@ -560,25 +560,28 @@ Once you start the Dagster UI (`uv run dg dev`), you'll see:
 ```bash
 # Test a bronze layer asset (Asset Bundle)
 export DAGSTER_DEMO_MODE=true
-uv run dagster asset materialize -m databricks_workspace_bundles_demo.definitions --select raw_customer_data
+uv run dagster asset materialize -m databricks_workspace_bundles_demo.definitions --select bronze/us/raw_customer_data
 
 # Test a silver layer asset (Analytics Workspace)
-uv run dagster asset materialize -m databricks_workspace_bundles_demo.definitions --select customer_360_view
+uv run dagster asset materialize -m databricks_workspace_bundles_demo.definitions --select silver/us/customer_360
 
-# Test cross-workspace dependencies (Finance depends on Analytics)
-uv run dagster asset materialize -m databricks_workspace_bundles_demo.definitions --select ar_aging_analysis+
+# Test global asset with cross-regional dependencies
+uv run dagster asset materialize -m databricks_workspace_bundles_demo.definitions --select gold/global/customer_master+
 ```
 
 ### Verify All Assets Load
 
 ```bash
-# List all assets (should show 13 total)
+# List all assets (should show 26 total)
 uv run dagster asset list -m databricks_workspace_bundles_demo.definitions
 
 # Expected assets:
-# - 7 bronze layer assets (from Asset Bundle)
-# - 3 analytics assets (from Analytics Workspace)
-# - 3 finance assets (from Finance Workspace)
+# - 8 bronze layer assets (4 US + 4 EU from Asset Bundles)
+# - 6 silver/gold workspace assets (3 US + 3 EU from Analytics Workspaces)
+# - 4 dbt assets (2 US + 2 EU from dbt projects)
+# - 4 global gold assets (from Global Workspace)
+# - 2 external system assets (dashboards and data warehouse)
+# - 2 additional dbt transformations
 ```
 
 ## Troubleshooting
