@@ -102,7 +102,7 @@ This demo shows **regional data processing** with separate workspaces per region
   - Uses workspace pattern (job discovery)
 
 **EU Region** (`eu.databricks.com`):
-- **EU ETL Bundle** (`databricks_bundles/databricks_eu_etl.yml`): Data ingestion from EU sources (SAP, Salesforce EU)
+- **EU ETL Bundle** (`databricks_bundles/databricks_eu_etl.yml`): Data ingestion from EU sources
   - 4 bronze layer assets: EU customers, sales, products, financials
   - Deployed as asset bundle (infrastructure as code)
 - **EU Analytics Workspace**: Regional analytics and reporting
@@ -198,20 +198,20 @@ All components support demo mode via the `DAGSTER_DEMO_MODE` environment variabl
 Regional dbt projects for customer analytics demonstrating dbt integration with Databricks:
 
 **US dbt Analytics** (`dbt_projects/us_analytics_dbt/`):
-- **us_customer_metrics** (Silver): Customer lifetime value and order history aggregated from bronze layer
-- **us_customer_cohorts** (Gold): Customer segmentation and cohort analysis for retention tracking
+- **silver/us/customer_metrics** (Silver): Customer lifetime value and order history aggregated from bronze layer
+- **gold/us/customer_cohorts** (Gold): Customer segmentation and cohort analysis for retention tracking
 
 **EU dbt Analytics** (`dbt_projects/eu_analytics_dbt/`):
 - Same dbt models as US (customer_metrics, customer_cohorts) with GDPR-compliant processing
 - Separate dbt project maintains data sovereignty
-- Assets prefixed with `eu_` to avoid naming conflicts
+- Assets prefixed with region to avoid naming conflicts
 
 **Integration Pattern**:
 - Uses `DbtProjectComponent` with demo mode support and custom translation
-- Translation config adds regional prefixes (`us_` and `eu_`) to dbt model names
+- Translation config adds regional prefixes to dbt model names
 - Each dbt model becomes a Dagster asset with automatic lineage tracking
 - Dependencies flow from bronze assets → dbt silver → dbt gold
-- Executes via PipesDatabricksClient on Databricks (or simulated in demo mode)
+- dbt connects and runs normally against Databricks (no special execution patterns required)
 
 **Benefits**:
 - **Unified Lineage**: dbt models appear alongside Databricks assets in the same DAG
@@ -318,18 +318,18 @@ This script will:
 **US dbt Analytics** (dbt Silver/Gold Layer - 2 Assets):
 | Asset | Type | Dependencies | Description |
 |-------|------|--------------|-------------|
-| `us_customer_metrics` | dbt (silver) | raw_customer_data_us, raw_sales_orders_us | Customer lifetime value and order history |
-| `us_customer_cohorts` | dbt (gold) | us_customer_metrics | Customer segmentation and cohort analysis |
+| `silver/us/customer_metrics` | dbt (silver) | raw_customer_data_us, raw_sales_orders_us | Customer lifetime value and order history |
+| `gold/us/customer_cohorts` | dbt (gold) | silver/us/customer_metrics | Customer segmentation and cohort analysis |
 
 ### EU Region (9 Assets)
 
 **EU ETL Bundle** (Bronze Layer - 4 Assets):
 | Asset | Source Systems | Description |
 |-------|---------------|-------------|
-| `raw_customer_data_eu` | Salesforce EU, SAP ECC | EU customer master data (GDPR-compliant) |
-| `raw_sales_orders_eu` | SAP ECC, E-commerce Platform EU | EU sales order data |
+| `raw_customer_data_eu` | Salesforce EU, ERP EU | EU customer master data (GDPR-compliant) |
+| `raw_sales_orders_eu` | ERP EU, E-commerce Platform EU | EU sales order data |
 | `raw_product_catalog_eu` | PIM System EU | EU product master with SKUs and pricing |
-| `raw_financial_transactions_eu` | SAP FI/CO | EU general ledger transactions (IFRS, GDPR compliant) |
+| `raw_financial_transactions_eu` | ERP EU, Financial System EU | EU general ledger transactions (IFRS, GDPR compliant) |
 
 **EU Analytics Workspace** (Silver/Gold Layer - 3 Assets):
 | Asset | Dependencies | Description |
@@ -341,8 +341,8 @@ This script will:
 **EU dbt Analytics** (dbt Silver/Gold Layer - 2 Assets):
 | Asset | Type | Dependencies | Description |
 |-------|------|--------------|-------------|
-| `eu_customer_metrics` | dbt (silver) | raw_customer_data_eu, raw_sales_orders_eu | Customer lifetime value and order history (GDPR-compliant) |
-| `eu_customer_cohorts` | dbt (gold) | eu_customer_metrics | Customer segmentation and cohort analysis (GDPR-compliant) |
+| `silver/eu/customer_metrics` | dbt (silver) | raw_customer_data_eu, raw_sales_orders_eu | Customer lifetime value and order history (GDPR-compliant) |
+| `gold/eu/customer_cohorts` | dbt (gold) | silver/eu/customer_metrics | Customer segmentation and cohort analysis (GDPR-compliant) |
 
 ### Global Region (4 Assets)
 
@@ -421,24 +421,49 @@ databricks-workspace-bundles-demo/
 ├── databricks_bundles/                 # Databricks Asset Bundle configurations
 │   ├── databricks_us_etl.yml          # US regional ETL bundle config
 │   └── databricks_eu_etl.yml          # EU regional ETL bundle config
+├── dbt_projects/                       # dbt projects for regional analytics
+│   ├── us_analytics_dbt/              # US dbt project
+│   │   ├── dbt_project.yml
+│   │   ├── profiles.yml
+│   │   └── models/
+│   │       ├── silver/
+│   │       │   └── customer_metrics.sql
+│   │       └── gold/
+│   │           └── customer_cohorts.sql
+│   └── eu_analytics_dbt/              # EU dbt project
+│       ├── dbt_project.yml
+│       ├── profiles.yml
+│       └── models/
+│           ├── silver/
+│           │   └── customer_metrics.sql
+│           └── gold/
+│               └── customer_cohorts.sql
 ├── src/
 │   └── databricks_workspace_bundles_demo/
 │       ├── components/
 │       │   ├── __init__.py
 │       │   ├── databricks_asset_bundle_component.py   # Bundle pattern
-│       │   └── databricks_workspace_component.py      # Workspace pattern
+│       │   ├── databricks_workspace_component.py      # Workspace pattern
+│       │   └── databricks_dbt_component.py            # dbt integration
 │       ├── defs/
 │       │   ├── __init__.py
 │       │   ├── asset_bundle_etl_us/
 │       │   │   └── defs.yaml           # US ETL bundle (Asset Bundle)
 │       │   ├── asset_bundle_etl_eu/
 │       │   │   └── defs.yaml           # EU ETL bundle (Asset Bundle)
+│       │   ├── dbt_us/
+│       │   │   └── defs.yaml           # US dbt project (dbt)
+│       │   ├── dbt_eu/
+│       │   │   └── defs.yaml           # EU dbt project (dbt)
 │       │   ├── workspace_us/
 │       │   │   └── defs.yaml           # US analytics workspace (Workspace)
 │       │   ├── workspace_eu/
 │       │   │   └── defs.yaml           # EU analytics workspace (Workspace)
-│       │   └── workspace_global/
-│       │       └── defs.yaml           # Global workspace (Workspace - cross-regional)
+│       │   ├── workspace_global/
+│       │   │   └── defs.yaml           # Global workspace (Workspace - cross-regional)
+│       │   ├── external_systems.py     # External system assets
+│       │   ├── jobs.py                 # Job definitions
+│       │   └── schedules.py            # Schedule definitions
 │       └── definitions.py
 ├── pyproject.toml
 └── README.md
@@ -446,7 +471,7 @@ databricks-workspace-bundles-demo/
 
 ## Demo Talking Points
 
-### For SAP (The Company)
+### Key Demonstration Points
 
 1. **Regional Data Sovereignty**: Separate Databricks workspaces per region (US, EU, Global) with clear data boundaries:
    - US data stays in US workspace (SOX, GAAP compliance)
@@ -479,7 +504,7 @@ databricks-workspace-bundles-demo/
    - Silver layer for regional transformations
    - Gold layer in global workspace for consolidated metrics
 
-### Dagster Value Props
+### Dagster Value Propositions
 
 1. **Multi-Region Orchestration**: Seamless coordination across US, EU, and Global workspaces in single deployment
 2. **Cross-Regional Lineage**: Track dependencies that span regions (EU customer → Global customer master)
