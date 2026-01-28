@@ -1,0 +1,54 @@
+# Databricks Asset Bundle Configuration - Shared ETL Pipeline
+# This shared bundle can be deployed to multiple regional workspaces
+# Demonstrates bundle reusability across regions
+
+bundle:
+  name: shared_data_etl
+
+targets:
+  prod:
+    mode: production
+    # Workspace host is configured per deployment in component defs
+
+  dev:
+    mode: development
+    # Workspace host is configured per deployment in component defs
+
+# Shared ETL extraction jobs - common across all regions
+resources:
+  jobs:
+    regional_data_extract:
+      name: "Regional Data Extract"
+
+      tasks:
+        - task_key: extract_customers
+          notebook_task:
+            notebook_path: /Workspace/etl/extract_customers
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_sales
+          notebook_task:
+            notebook_path: /Workspace/etl/extract_sales
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_products
+          notebook_task:
+            notebook_path: /Workspace/etl/extract_products
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: extract_financials
+          notebook_task:
+            notebook_path: /Workspace/etl/extract_financials
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2

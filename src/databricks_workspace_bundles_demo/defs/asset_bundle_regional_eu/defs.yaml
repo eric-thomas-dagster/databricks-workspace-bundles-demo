@@ -1,0 +1,66 @@
+# EU Region-Specific Asset Bundle - EU compliance and regulatory features
+# Demonstrates region-specific bundle deployment alongside shared bundles
+# Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
+type: databricks_workspace_bundles_demo.components.CustomDatabricksAssetBundleComponent
+
+attributes:
+  # Path to EU region-specific databricks.yml configuration
+  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_eu_regional.yml"
+
+  # Workspace connection (same workspace as shared ETL, different bundle)
+  workspace:
+    host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
+    token: "{{ env.DATABRICKS_EU_TOKEN | default('demo-token-eu') }}"
+
+  # Compute configuration
+  compute_config:
+    is_serverless: true
+
+  # Map EU-specific compliance tasks to Dagster asset specs
+  assets_by_task_key:
+    gdpr_compliance_check:
+      - key: compliance/eu/gdpr_validation
+        group_name: eu_compliance
+        owners: ["eu-compliance@company.com"]
+        kinds: [deltalake, notebook, pyspark, compliance]
+        description: "GDPR compliance validation and data privacy checks"
+        metadata:
+          compliance_framework: "GDPR"
+          region: "EU"
+          integration_type: "asset_bundle"
+          layer: "compliance"
+          task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
+
+    ifrs_financial_reporting:
+      - key: compliance/eu/ifrs_reporting
+        group_name: eu_compliance
+        owners: ["eu-compliance@company.com"]
+        kinds: [deltalake, notebook, pyspark, compliance]
+        description: "IFRS financial reporting and reconciliation"
+        metadata:
+          compliance_framework: "IFRS"
+          region: "EU"
+          integration_type: "asset_bundle"
+          layer: "compliance"
+          task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
+
+    vat_tax_aggregation:
+      - key: compliance/eu/vat_calc
+        group_name: eu_compliance
+        owners: ["eu-compliance@company.com"]
+        kinds: [deltalake, notebook, pyspark, compliance]
+        description: "EU VAT tax calculations and cross-border aggregations"
+        metadata:
+          compliance_framework: "VAT"
+          region: "EU"
+          integration_type: "asset_bundle"
+          layer: "compliance"
+          task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
+
+requirements:
+  env:
+    - DATABRICKS_EU_HOST
+    - DATABRICKS_EU_TOKEN

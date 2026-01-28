@@ -1,11 +1,11 @@
-# EU Regional ETL Asset Bundle - Uses official DatabricksAssetBundleComponent pattern
-# Properly subclasses the official component with demo mode support
+# EU Regional ETL Asset Bundle - Uses SHARED databricks_etl.yml bundle
+# Demonstrates bundle reusability - same bundle deployed to EU workspace
 # Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
 type: databricks_workspace_bundles_demo.components.CustomDatabricksAssetBundleComponent
 
 attributes:
-  # Path to databricks.yml configuration for EU ETL
-  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_eu_etl.yml"
+  # Path to SHARED databricks.yml configuration (reused across regions)
+  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_etl.yml"
 
   # Workspace connection
   workspace:
@@ -17,8 +17,9 @@ attributes:
     is_serverless: true
 
   # Map Databricks task keys to Dagster asset specs
+  # Task keys match the shared bundle (no region prefix)
   assets_by_task_key:
-    extract_eu_customers:
+    extract_customers:
       - key: raw/eu/customer_data
         group_name: eu_etl
         owners: ["eu-data-engineering@company.com"]
@@ -35,7 +36,7 @@ attributes:
           task_type: "databricks_task"
           databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
 
-    extract_eu_sales:
+    extract_sales:
       - key: raw/eu/sales_orders
         group_name: eu_etl
         owners: ["eu-data-engineering@company.com"]
@@ -52,7 +53,7 @@ attributes:
           task_type: "databricks_task"
           databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
 
-    extract_eu_products:
+    extract_products:
       - key: raw/eu/product_catalog
         group_name: eu_etl
         owners: ["eu-data-engineering@company.com"]
@@ -68,7 +69,7 @@ attributes:
           task_type: "databricks_task"
           databricks_workspace_host: "{{ env.DATABRICKS_EU_HOST | default('https://eu.databricks.com') }}"
 
-    extract_eu_financials:
+    extract_financials:
       - key: raw/eu/financial_transactions
         group_name: eu_etl
         owners: ["eu-data-engineering@company.com"]

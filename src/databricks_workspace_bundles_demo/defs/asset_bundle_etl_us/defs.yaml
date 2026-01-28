@@ -1,11 +1,11 @@
-# US Regional ETL Asset Bundle - Uses official DatabricksAssetBundleComponent pattern
-# Properly subclasses the official component with demo mode support
+# US Regional ETL Asset Bundle - Uses SHARED databricks_etl.yml bundle
+# Demonstrates bundle reusability - same bundle deployed to US workspace
 # Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
 type: databricks_workspace_bundles_demo.components.CustomDatabricksAssetBundleComponent
 
 attributes:
-  # Path to databricks.yml configuration for US ETL
-  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_us_etl.yml"
+  # Path to SHARED databricks.yml configuration (reused across regions)
+  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_etl.yml"
 
   # Workspace connection
   workspace:
@@ -17,8 +17,9 @@ attributes:
     is_serverless: true
 
   # Map Databricks task keys to Dagster asset specs
+  # Task keys match the shared bundle (no region prefix)
   assets_by_task_key:
-    extract_us_customers:
+    extract_customers:
       - key: raw/us/customer_data
         group_name: us_etl
         owners: ["us-data-engineering@company.com"]
@@ -35,7 +36,7 @@ attributes:
           task_type: "databricks_task"
           databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
-    extract_us_sales:
+    extract_sales:
       - key: raw/us/sales_orders
         group_name: us_etl
         owners: ["us-data-engineering@company.com"]
@@ -51,7 +52,7 @@ attributes:
           task_type: "databricks_task"
           databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
-    extract_us_products:
+    extract_products:
       - key: raw/us/product_catalog
         group_name: us_etl
         owners: ["us-data-engineering@company.com"]
@@ -67,7 +68,7 @@ attributes:
           task_type: "databricks_task"
           databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
 
-    extract_us_financials:
+    extract_financials:
       - key: raw/us/financial_transactions
         group_name: us_etl
         owners: ["us-data-engineering@company.com"]

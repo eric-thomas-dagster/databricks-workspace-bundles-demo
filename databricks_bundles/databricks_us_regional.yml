@@ -1,0 +1,50 @@
+# Databricks Asset Bundle Configuration - US Region-Specific Features
+# This bundle contains US-specific data processing requirements
+# Demonstrates region-specific bundle deployment alongside shared bundles
+
+bundle:
+  name: us_regional_features
+
+targets:
+  prod:
+    mode: production
+    workspace:
+      host: ${DATABRICKS_US_HOST}
+
+  dev:
+    mode: development
+    workspace:
+      host: ${DATABRICKS_US_HOST}
+
+# US-specific jobs (regulatory, compliance, or business-specific requirements)
+resources:
+  jobs:
+    us_compliance_reporting:
+      name: "US Compliance & Regulatory Reporting"
+
+      tasks:
+        - task_key: sox_compliance_check
+          notebook_task:
+            notebook_path: /Workspace/compliance/us/sox_validation
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+
+        - task_key: gaap_financial_reporting
+          notebook_task:
+            notebook_path: /Workspace/compliance/us/gaap_reporting
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+          depends_on:
+            - task_key: sox_compliance_check
+
+        - task_key: state_tax_aggregation
+          notebook_task:
+            notebook_path: /Workspace/compliance/us/state_tax_calc
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2

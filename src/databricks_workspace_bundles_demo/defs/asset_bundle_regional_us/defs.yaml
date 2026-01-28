@@ -1,0 +1,66 @@
+# US Region-Specific Asset Bundle - US compliance and regulatory features
+# Demonstrates region-specific bundle deployment alongside shared bundles
+# Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
+type: databricks_workspace_bundles_demo.components.CustomDatabricksAssetBundleComponent
+
+attributes:
+  # Path to US region-specific databricks.yml configuration
+  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_us_regional.yml"
+
+  # Workspace connection (same workspace as shared ETL, different bundle)
+  workspace:
+    host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
+    token: "{{ env.DATABRICKS_US_TOKEN | default('demo-token-us') }}"
+
+  # Compute configuration
+  compute_config:
+    is_serverless: true
+
+  # Map US-specific compliance tasks to Dagster asset specs
+  assets_by_task_key:
+    sox_compliance_check:
+      - key: compliance/us/sox_validation
+        group_name: us_compliance
+        owners: ["us-compliance@company.com"]
+        kinds: [deltalake, notebook, pyspark, compliance]
+        description: "SOX compliance validation for US financial data"
+        metadata:
+          compliance_framework: "SOX"
+          region: "US"
+          integration_type: "asset_bundle"
+          layer: "compliance"
+          task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
+
+    gaap_financial_reporting:
+      - key: compliance/us/gaap_reporting
+        group_name: us_compliance
+        owners: ["us-compliance@company.com"]
+        kinds: [deltalake, notebook, pyspark, compliance]
+        description: "GAAP financial reporting and reconciliation"
+        metadata:
+          compliance_framework: "GAAP"
+          region: "US"
+          integration_type: "asset_bundle"
+          layer: "compliance"
+          task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
+
+    state_tax_aggregation:
+      - key: compliance/us/state_tax_calc
+        group_name: us_compliance
+        owners: ["us-compliance@company.com"]
+        kinds: [deltalake, notebook, pyspark, compliance]
+        description: "US state tax calculations and aggregations"
+        metadata:
+          compliance_framework: "State Tax"
+          region: "US"
+          integration_type: "asset_bundle"
+          layer: "compliance"
+          task_type: "databricks_task"
+          databricks_workspace_host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
+
+requirements:
+  env:
+    - DATABRICKS_US_HOST
+    - DATABRICKS_US_TOKEN
