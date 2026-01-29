@@ -24,6 +24,7 @@ attributes:
         owners: ["eu-compliance@company.com"]
         kinds: [deltalake, notebook, pyspark, compliance]
         description: "GDPR compliance validation and data privacy checks"
+        deps: [raw/eu/customer_data]
         metadata:
           compliance_framework: "GDPR"
           region: "EU"
@@ -38,6 +39,7 @@ attributes:
         owners: ["eu-compliance@company.com"]
         kinds: [deltalake, notebook, pyspark, compliance]
         description: "IFRS financial reporting and reconciliation"
+        deps: [gold/eu/financial_summary]
         metadata:
           compliance_framework: "IFRS"
           region: "EU"
@@ -52,6 +54,7 @@ attributes:
         owners: ["eu-compliance@company.com"]
         kinds: [deltalake, notebook, pyspark, compliance]
         description: "EU VAT tax calculations and cross-border aggregations"
+        deps: [raw/eu/sales_orders, raw/eu/financial_transactions]
         metadata:
           compliance_framework: "VAT"
           region: "EU"

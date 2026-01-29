@@ -24,6 +24,7 @@ attributes:
         owners: ["us-compliance@company.com"]
         kinds: [deltalake, notebook, pyspark, compliance]
         description: "SOX compliance validation for US financial data"
+        deps: [raw/us/financial_transactions]
         metadata:
           compliance_framework: "SOX"
           region: "US"
@@ -38,6 +39,7 @@ attributes:
         owners: ["us-compliance@company.com"]
         kinds: [deltalake, notebook, pyspark, compliance]
         description: "GAAP financial reporting and reconciliation"
+        deps: [gold/us/financial_summary]
         metadata:
           compliance_framework: "GAAP"
           region: "US"
@@ -52,6 +54,7 @@ attributes:
         owners: ["us-compliance@company.com"]
         kinds: [deltalake, notebook, pyspark, compliance]
         description: "US state tax calculations and aggregations"
+        deps: [raw/us/sales_orders, raw/us/financial_transactions]
         metadata:
           compliance_framework: "State Tax"
           region: "US"
