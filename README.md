@@ -529,16 +529,67 @@ These assets represent downstream systems that are automatically triggered when 
 
 ## Component Configuration
 
-All three teams use the same `CustomDatabricksAssetBundleComponent` pattern, which properly subclasses the official `DatabricksAssetBundleComponent`:
+### Why Custom Components?
 
-> **📝 Demo Mode Note**: This demo uses **custom component subclasses** (`CustomDatabricksAssetBundleComponent`, `CustomDatabricksWorkspaceComponent`, `CustomDbtProjectComponent`) to enable running the demo without real Databricks credentials via `DAGSTER_DEMO_MODE=true`. These custom components add demo mode simulation but otherwise delegate to the official Dagster components.
->
-> **In a real production scenario**, you would use the official components directly:
-> - `dagster_databricks.DatabricksAssetBundleComponent`
-> - `dagster_databricks.DatabricksWorkspaceComponent`
-> - `dagster_dbt.DbtProjectComponent`
->
-> The custom components in this demo also add `databricks_workspace_host` metadata to all assets for demonstration purposes, but this is optional functionality not required for production use.
+This demo uses custom component subclasses for specific reasons beyond just demo mode:
+
+| Component | Demo Mode Support | Production Use Cases |
+|-----------|------------------|---------------------|
+| **CustomDbtProjectComponent** | ✅ Yes | ✅ **REQUIRED**: State key uniqueness for shared projects<br>✅ Optional: Workspace metadata enrichment |
+| **CustomDatabricksAssetBundleComponent** | ✅ Yes | ✅ **REQUIRED**: Op naming fix (until dagster-databricks releases)<br>✅ Handles empty bundles gracefully |
+| **CustomDatabricksWorkspaceComponent** | ✅ Yes | ❌ **NOT NEEDED**: Delegates to parent in production |
+
+**For Production (without demo mode)**:
+
+```python
+# You NEED custom dbt component (state key fix)
+from databricks_workspace_bundles_demo.components import CustomDbtProjectComponent
+
+# You NEED custom asset bundle component (op naming fix - until official release)
+from databricks_workspace_bundles_demo.components import CustomDatabricksAssetBundleComponent
+
+# You DON'T NEED custom workspace component (just use official)
+from dagster_databricks import DatabricksWorkspaceComponent
+```
+
+**Once dagster-databricks releases the op naming fix**, you can drop `CustomDatabricksAssetBundleComponent` and use:
+```python
+from dagster_databricks import DatabricksAssetBundleComponent
+```
+
+### Critical Fixes in Custom Components
+
+#### 1. State Key Uniqueness (dbt)
+
+**Problem**: Multiple components sharing the same dbt project generate identical state keys, causing `DuplicateDefsStateKeyWarning`.
+
+**Fix** (in `CustomDbtProjectComponent`):
+```python
+@property
+def defs_state_config(self) -> DefsStateConfig:
+    """Uses dbt target to create unique state keys."""
+    discriminator = self._project_manager.defs_state_discriminator
+    target = self._project_manager.args.target
+    if target:
+        discriminator = f"{discriminator},{target}"
+    return DefsStateConfig(key=f"DbtProjectComponent[{discriminator}]", ...)
+```
+
+**Result**: `DbtProjectComponent[common_analytics_dbt,us]` vs `DbtProjectComponent[common_analytics_dbt,eu]`
+
+#### 2. Op Naming Fix (Databricks Asset Bundles)
+
+**Problem**: Current `dagster-databricks` (0.28.12) uses `op.name` as full replacement instead of prefix, causing collisions with multiple tasks.
+
+**Fix** (in `CustomDatabricksAssetBundleComponent`):
+```python
+op_prefix = self.op.name if self.op and self.op.name else "databricks"
+name=f"{op_prefix}_{task_key}_multi_asset_{component_defs_path_as_python_str}"
+```
+
+**Result**: `etl_us_extract_customers_multi_asset_...` vs `etl_eu_extract_customers_multi_asset_...`
+
+**⚠️ This fix is not yet released** in official `dagster-databricks`. Once released, you can remove this custom component.
 
 ```yaml
 # Example: asset_bundle_etl_us/defs.yaml
