@@ -125,7 +125,7 @@ attributes:
   op:
     name: "dbt_us_common"  # Unique op name per region
 
-  select: "source:*_us tag:us"  # Include only US sources and models
+  select: "tag:us"  # Include only US-tagged models (sources auto-included via dependencies)
 ```
 
 **Key Techniques**:
@@ -244,7 +244,7 @@ op_prefix = self.op.name if self.op and self.op.name else "databricks"
 
 **Adding APAC Region** now requires:
 
-1. **dbt**: Add APAC target to `common_analytics_dbt/profiles.yml`, create `defs/dbt_apac_common/defs.yaml` with `target: "apac"` and `select: "source:*_apac tag:apac"` ✅
+1. **dbt**: Add APAC target to `common_analytics_dbt/profiles.yml`, create `defs/dbt_apac_common/defs.yaml` with `target: "apac"` and `select: "tag:apac"` ✅
 2. **Databricks Bundle**: Point new `asset_bundle_etl_apac` component to `common_regional_etl.yml` with `op.name: "etl_apac"` ✅
 3. **No changes needed** to existing US/EU configurations ✅
 

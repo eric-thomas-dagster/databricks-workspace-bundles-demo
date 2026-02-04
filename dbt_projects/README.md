@@ -80,7 +80,7 @@ attributes:
   op:
     name: "dbt_us_common"  # Unique op name
 
-  select: "source:*_us tag:us"  # Load only US sources/models
+  select: "tag:us"  # Load only US-tagged models (sources auto-included)
 
   translation:
     key: "{% if node.resource_type == 'source' %}raw/us/{{ node.name | replace('raw_', '') | replace('_us', '') }}{% elif 'cohort' in node.name %}gold/us/{{ node.name }}{% else %}silver/us/{{ node.name }}{% endif %}"
@@ -96,7 +96,7 @@ attributes:
   op:
     name: "dbt_eu_common"  # Different op name
 
-  select: "source:*_eu tag:eu"  # Load only EU sources/models
+  select: "tag:eu"  # Load only EU-tagged models (sources auto-included)
 
   translation:
     key: "{% if node.resource_type == 'source' %}raw/eu/{{ node.name | replace('raw_', '') | replace('_eu', '') }}{% elif 'cohort' in node.name %}gold/eu/{{ node.name }}{% else %}silver/eu/{{ node.name }}{% endif %}"
@@ -148,15 +148,17 @@ This prevents op execution collisions when both components run.
 **Use `select` (not `exclude`)** for region-specific filtering:
 
 ```yaml
-select: "source:*_us tag:us"  # US component (whitelist approach)
+select: "tag:us"  # US component (whitelist approach)
 # vs
-select: "source:*_eu tag:eu"  # EU component
+select: "tag:eu"  # EU component
 ```
 
-**Why whitelist?**
+**Why tag-based selection?**
+- dbt automatically includes required sources when resolving model dependencies
 - Scales better when adding regions (no need to exclude multiple regions)
-- More explicit and safer
-- Easier to understand which sources/models are included
+- More explicit and safer than wildcards
+- Easier to understand which models are included
+- Avoids dbt selection syntax warnings about unmatched source patterns
 
 ## dbt Models
 
@@ -224,7 +226,7 @@ sources:
             asset_key: ["raw", "eu", "sales_orders"]
 ```
 
-The `select` parameter in each component filters which sources are loaded.
+The `select` parameter in each component filters which models are loaded. dbt automatically includes required sources when resolving model dependencies, so explicit source selection is not needed.
 
 ## Local dbt Development
 
@@ -285,7 +287,7 @@ To add APAC region:
        target: "apac"
      op:
        name: "dbt_apac_common"
-     select: "source:*_apac tag:apac"
+     select: "tag:apac"
    ```
 
 **No changes needed** to existing models or US/EU configurations! ✅
