@@ -1,0 +1,31 @@
+# Databricks Asset Bundle Configuration - Common Regional ETL
+# Shared ETL pattern deployed to both US and EU workspaces
+
+bundle:
+  name: regional_data_etl
+
+# Include resource definitions
+include:
+  - resources/etl_jobs.yml
+
+targets:
+  us:
+    mode: production
+    workspace:
+      host: ${DATABRICKS_US_HOST}
+    variables:
+      region: us
+
+  eu:
+    mode: production
+    workspace:
+      host: ${DATABRICKS_EU_HOST}
+    variables:
+      region: eu
+
+  dev:
+    mode: development
+    workspace:
+      host: ${DATABRICKS_US_HOST}
+    variables:
+      region: us

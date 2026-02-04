@@ -9,7 +9,9 @@ import os
 from typing import Any, Iterator
 
 from dagster import AssetExecutionContext, MaterializeResult, Definitions
+from dagster.components.utils.defs_state import DefsStateConfig
 from dagster_dbt import DbtProjectComponent
+from dagster_shared.serdes.objects.models.defs_state_info import DefsStateManagementType
 
 
 class CustomDbtProjectComponent(DbtProjectComponent):
@@ -25,7 +27,37 @@ class CustomDbtProjectComponent(DbtProjectComponent):
 
     Automatically enriches all dbt assets with databricks_workspace_host metadata
     by detecting the workspace from asset group names (us_dbt_analytics -> DATABRICKS_US_HOST).
+
+    Supports multiple components sharing the same dbt project by using the dbt target
+    to create unique state keys (e.g., DbtProjectComponent[common_analytics_dbt,us]).
     """
+
+    @property
+    def defs_state_config(self) -> DefsStateConfig:
+        """
+        Override to include dbt target in the discriminator for unique state keys.
+
+        When multiple components share the same dbt project but target different
+        workspaces/regions, the dbt target name ensures each has a unique state key.
+
+        Following engineering's guidance: extend the discriminator with the target,
+        formatted as: DbtProjectComponent[common_analytics_dbt,us]
+        """
+        # Get the base discriminator (project directory)
+        discriminator = self._project_manager.defs_state_discriminator
+
+        # Add the dbt target to make it unique
+        # This works because each component specifies target: "us" or target: "eu"
+        if hasattr(self._project_manager, 'args') and hasattr(self._project_manager.args, 'target'):
+            target = self._project_manager.args.target
+            if target:
+                discriminator = f"{discriminator},{target}"
+
+        return DefsStateConfig(
+            key=f"DbtProjectComponent[{discriminator}]",
+            management_type=DefsStateManagementType.LOCAL_FILESYSTEM,
+            refresh_if_dev=self.prepare_if_dev,
+        )
 
     def build_defs(self, context: Any) -> Definitions:
         """
@@ -78,11 +110,21 @@ class CustomDbtProjectComponent(DbtProjectComponent):
 
     def _get_workspace_host_from_project_path(self) -> str:
         """
-        Get workspace host from dbt project path and environment variables.
+        Get workspace host from dbt target or project path.
 
-        Looks for patterns like us_analytics_dbt -> DATABRICKS_US_HOST.
+        For common projects, uses the dbt target (us/eu) to determine workspace.
+        For separate projects, detects from project path patterns.
         """
-        # Get project path
+        # If using dbt target (common project), use it to determine workspace
+        if hasattr(self, '_project_manager') and hasattr(self._project_manager, 'args'):
+            target = getattr(self._project_manager.args, 'target', None)
+            if target:
+                if target.lower() == "eu":
+                    return os.getenv("DATABRICKS_EU_HOST", "https://eu.databricks.com")
+                elif target.lower() == "us":
+                    return os.getenv("DATABRICKS_US_HOST", "https://us.databricks.com")
+
+        # Otherwise fall back to project path detection
         project_path = str(self.project) if self.project else ""
 
         # Map project paths to environment variables

@@ -5,6 +5,10 @@
 bundle:
   name: eu_regional_features
 
+# Include resource definitions
+include:
+  - resources/eu_regional_jobs.yml
+
 targets:
   prod:
     mode: production
@@ -15,36 +19,3 @@ targets:
     mode: development
     workspace:
       host: ${DATABRICKS_EU_HOST}
-
-# EU-specific jobs (GDPR, regulatory, or business-specific requirements)
-resources:
-  jobs:
-    eu_compliance_reporting:
-      name: "EU Compliance & Regulatory Reporting"
-
-      tasks:
-        - task_key: gdpr_compliance_check
-          notebook_task:
-            notebook_path: /Workspace/compliance/eu/gdpr_validation
-          new_cluster:
-            spark_version: "13.3.x-scala2.12"
-            node_type_id: "i3.xlarge"
-            num_workers: 2
-
-        - task_key: ifrs_financial_reporting
-          notebook_task:
-            notebook_path: /Workspace/compliance/eu/ifrs_reporting
-          new_cluster:
-            spark_version: "13.3.x-scala2.12"
-            node_type_id: "i3.xlarge"
-            num_workers: 2
-          depends_on:
-            - task_key: gdpr_compliance_check
-
-        - task_key: vat_tax_aggregation
-          notebook_task:
-            notebook_path: /Workspace/compliance/eu/vat_calc
-          new_cluster:
-            spark_version: "13.3.x-scala2.12"
-            node_type_id: "i3.xlarge"
-            num_workers: 2

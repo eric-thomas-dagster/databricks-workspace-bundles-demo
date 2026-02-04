@@ -1,0 +1,32 @@
+version: 2
+
+sources:
+  - name: dagster
+    description: "Bronze layer data from Dagster-orchestrated Databricks jobs"
+
+    tables:
+      # US Sources
+      - name: raw_customer_data_us
+        description: "Raw US customer master data from Salesforce and NetSuite"
+        meta:
+          dagster:
+            asset_key: ["raw", "us", "customer_data"]
+
+      - name: raw_sales_orders_us
+        description: "Raw US sales order data including headers and line items"
+        meta:
+          dagster:
+            asset_key: ["raw", "us", "sales_orders"]
+
+      # EU Sources
+      - name: raw_customer_data_eu
+        description: "Raw EU customer master data from Salesforce and SAP"
+        meta:
+          dagster:
+            asset_key: ["raw", "eu", "customer_data"]
+
+      - name: raw_sales_orders_eu
+        description: "Raw EU sales order data including headers and line items"
+        meta:
+          dagster:
+            asset_key: ["raw", "eu", "sales_orders"]

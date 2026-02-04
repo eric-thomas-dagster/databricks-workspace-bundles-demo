@@ -1,106 +1,209 @@
 # Databricks Asset Bundle Configurations
 
-This directory contains Databricks Asset Bundle (`databricks.yml`) configuration files for the demo, demonstrating both **consistent ETL patterns** (same structure across regions) and **region-specific bundles** (custom compliance features).
+This directory contains Databricks Asset Bundle configurations demonstrating **consolidated bundle patterns** with resource includes and multi-region deployment.
 
 ## Bundle Architecture
 
-This demo showcases two bundle patterns:
+### Consolidated Pattern with Resource Includes
 
-### 1. Consistent ETL Pattern (Standardized Across Regions)
-**`databricks_us_etl.yml`** and **`databricks_eu_etl.yml`** - Regional ETL bundles following the same pattern
+This demo showcases the **include pattern** for Databricks Asset Bundles, where task definitions are separated into reusable resource files:
 
-These bundles follow identical structure and task naming, demonstrating:
-- Standardized ETL patterns across regions
-- Consistent task structure and naming conventions
-- Regional deployment with unique bundle names (avoids naming collisions)
+```
+databricks_bundles/
+├── common_regional_etl.yml          # Shared ETL bundle (US + EU)
+├── databricks_us_regional.yml       # US-specific compliance
+├── databricks_eu_regional.yml       # EU-specific compliance
+└── resources/                       # Task definitions (included files)
+    ├── etl_jobs.yml                 # Shared ETL tasks
+    ├── us_regional_jobs.yml         # US compliance tasks
+    └── eu_regional_jobs.yml         # EU compliance tasks
+```
 
-**Common Tasks** (same across both regions):
-- `extract_customers` - Extracts customer data from regional CRM/ERP systems
+### Why Use the Include Pattern?
+
+**Problem**: Dagster's `DatabricksConfig` parser **only reads tasks from included files**, not from tasks defined inline in the main bundle YAML.
+
+**Solution**: Separate task definitions into `resources/*.yml` files and include them:
+
+```yaml
+# common_regional_etl.yml
+bundle:
+  name: regional_data_etl
+
+include:
+  - resources/etl_jobs.yml  # Tasks loaded from here
+
+targets:
+  us:
+    workspace:
+      host: ${DATABRICKS_US_HOST}
+  eu:
+    workspace:
+      host: ${DATABRICKS_EU_HOST}
+```
+
+## Bundle Descriptions
+
+### 1. `common_regional_etl.yml` - Shared ETL Pattern
+
+**Purpose**: Single bundle shared by both US and EU regions with identical ETL tasks.
+
+**Includes**: `resources/etl_jobs.yml`
+
+**Tasks** (from included file):
+- `extract_customers` - Extracts customer data from regional CRM/ERP
 - `extract_sales` - Extracts sales orders from regional systems
 - `extract_products` - Extracts product catalog from regional PIM
-- `extract_financials` - Extracts financial transactions from regional systems
+- `extract_financials` - Extracts financial transactions
 
-**Key Difference**: Each bundle has a unique name (`us_data_etl` vs `eu_data_etl`) and job name to avoid Dagster naming collisions.
+**Used By**:
+- `asset_bundle_etl_us` component (points to US workspace)
+- `asset_bundle_etl_eu` component (points to EU workspace)
 
-### 2. Region-Specific Bundle Pattern (Custom Requirements)
-Region-specific bundles for compliance, regulatory, or business-specific needs.
+**Key Pattern**: Components specify different workspaces and unique `op.name` values:
 
-#### **`databricks_us_regional.yml`** - US-specific compliance features
-US-only regulatory and compliance requirements (SOX, GAAP, state tax).
+```yaml
+# asset_bundle_etl_us/defs.yaml
+attributes:
+  databricks_config_path: "{{ project_root }}/databricks_bundles/common_regional_etl.yml"
 
-**Deployed to**: US workspace via `asset_bundle_regional_us/defs.yaml`
+  op:
+    name: "etl_us"  # Unique per region
 
-**Tasks**:
+  workspace:
+    host: "{{ env.DATABRICKS_US_HOST }}"  # Determines deployment target
+```
+
+### 2. `databricks_us_regional.yml` - US-Specific Compliance
+
+**Purpose**: US-only regulatory and compliance workflows (SOX, GAAP, state tax).
+
+**Includes**: `resources/us_regional_jobs.yml`
+
+**Tasks** (from included file):
 - `sox_compliance_check` - SOX compliance validation
 - `gaap_financial_reporting` - GAAP financial reporting
 - `state_tax_aggregation` - US state tax calculations
 
-#### **`databricks_eu_regional.yml`** - EU-specific compliance features
-EU-only regulatory and compliance requirements (GDPR, IFRS, VAT).
+**Used By**: `asset_bundle_regional_us` component
 
-**Deployed to**: EU workspace via `asset_bundle_regional_eu/defs.yaml`
+### 3. `databricks_eu_regional.yml` - EU-Specific Compliance
 
-**Tasks**:
+**Purpose**: EU-only regulatory and compliance workflows (GDPR, IFRS, VAT).
+
+**Includes**: `resources/eu_regional_jobs.yml`
+
+**Tasks** (from included file):
 - `gdpr_compliance_check` - GDPR compliance validation
 - `ifrs_financial_reporting` - IFRS financial reporting
 - `vat_tax_aggregation` - EU VAT tax calculations
 
-## Architecture Benefits
+**Used By**: `asset_bundle_regional_eu` component
 
-### Consistent ETL Pattern (`databricks_us_etl.yml`, `databricks_eu_etl.yml`)
-- ✅ **Standardization**: Same structure and task naming across regions
-- ✅ **Consistency**: Identical ETL logic and conventions
-- ✅ **No Naming Collisions**: Unique bundle/job names per region
-- ✅ **Easy to Replicate**: Copy pattern to new regions
+## Component Configuration Pattern
 
-### Region-Specific Bundles
-- ✅ **Flexibility**: Custom features per region
-- ✅ **Compliance**: Region-specific regulatory requirements
-- ✅ **Isolation**: Regional features don't affect other regions
-- ✅ **Scalability**: Add new regions without modifying shared bundle
+### Multiple Components, Same Bundle
 
-## File Organization
+**Key Technique**: Multiple Dagster components can reference the **same bundle file** while targeting different workspaces:
 
+```yaml
+# US Component
+type: CustomDatabricksAssetBundleComponent
+attributes:
+  databricks_config_path: "{{ project_root }}/databricks_bundles/common_regional_etl.yml"
+  op:
+    name: "etl_us"  # Unique op name prevents collisions
+  workspace:
+    host: "{{ env.DATABRICKS_US_HOST }}"  # US deployment
+
+# EU Component (same bundle, different workspace!)
+type: CustomDatabricksAssetBundleComponent
+attributes:
+  databricks_config_path: "{{ project_root }}/databricks_bundles/common_regional_etl.yml"
+  op:
+    name: "etl_eu"  # Different op name
+  workspace:
+    host: "{{ env.DATABRICKS_EU_HOST }}"  # EU deployment
 ```
-databricks_bundles/
-├── databricks_us_etl.yml           # US ETL (follows standard pattern)
-├── databricks_eu_etl.yml           # EU ETL (follows standard pattern)
-├── databricks_us_regional.yml      # US-specific compliance
-└── databricks_eu_regional.yml      # EU-specific compliance
+
+### Critical Op Naming Pattern
+
+**⚠️ Important**: Each component MUST have a unique `op.name` to avoid execution collisions:
+
+```yaml
+op:
+  name: "etl_us"  # US component
+  # vs
+  name: "etl_eu"  # EU component
 ```
 
-For larger projects, you could organize as:
+This ensures unique op names like:
+- `etl_us_extract_customers_multi_asset_...`
+- `etl_eu_extract_customers_multi_asset_...`
 
+**Note**: The op naming fix that uses `op.name` as a **prefix** (not full replacement) is implemented in `CustomDatabricksAssetBundleComponent` but **not yet released** in official `dagster-databricks` (as of 0.28.12).
+
+## Scaling to Additional Regions
+
+Adding APAC region:
+
+1. **No bundle changes needed!** The `common_regional_etl.yml` already supports any region.
+
+2. **Create APAC component**:
+   ```yaml
+   # asset_bundle_etl_apac/defs.yaml
+   attributes:
+     databricks_config_path: "{{ project_root }}/databricks_bundles/common_regional_etl.yml"
+     op:
+       name: "etl_apac"  # Unique name
+     workspace:
+       host: "{{ env.DATABRICKS_APAC_HOST }}"
+   ```
+
+3. **Create APAC-specific compliance** (if needed):
+   ```yaml
+   # databricks_bundles/databricks_apac_regional.yml
+   include:
+     - resources/apac_regional_jobs.yml
+   ```
+
+## Resource File Organization
+
+Resource files contain the actual job and task definitions:
+
+```yaml
+# resources/etl_jobs.yml
+resources:
+  jobs:
+    regional_data_extract:
+      name: "Regional Data Extract"
+      tasks:
+        - task_key: extract_customers
+          notebook_task:
+            notebook_path: /Workspace/etl/extract_customers
+          new_cluster:
+            spark_version: "13.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 2
+        # ... more tasks
 ```
-databricks_bundles/
-├── shared/
-│   ├── etl.yml                     # Common ETL across all regions
-│   ├── data_quality.yml            # Shared data quality checks
-│   └── monitoring.yml              # Common monitoring
-├── regional/
-│   ├── us/
-│   │   ├── compliance.yml          # US compliance
-│   │   └── regional_analytics.yml  # US-specific analytics
-│   ├── eu/
-│   │   ├── compliance.yml          # EU compliance (GDPR)
-│   │   └── regional_analytics.yml  # EU-specific analytics
-│   └── apac/
-│       └── compliance.yml          # APAC compliance
-└── departmental/
-    ├── finance.yml                 # Finance-specific workflows
-    └── marketing.yml               # Marketing-specific workflows
-```
+
+**Benefits**:
+- ✅ **DRY Principle**: Task definitions defined once, used by multiple regions
+- ✅ **Maintainability**: Update one file to affect all regions
+- ✅ **Dagster Requirement**: Parser only reads included files
+- ✅ **Modularity**: Organize tasks by domain (ETL, compliance, analytics)
 
 ## Deploying Bundles
 
 ### Via Databricks CLI
 
 ```bash
-# Deploy US ETL bundle
-databricks bundle deploy -t prod -c databricks_bundles/databricks_us_etl.yml
+# Deploy shared ETL to US workspace
+databricks bundle deploy -t us -c databricks_bundles/common_regional_etl.yml
 
-# Deploy EU ETL bundle
-databricks bundle deploy -t prod -c databricks_bundles/databricks_eu_etl.yml
+# Deploy shared ETL to EU workspace
+databricks bundle deploy -t eu -c databricks_bundles/common_regional_etl.yml
 
 # Deploy US-specific regional bundle
 databricks bundle deploy -t prod -c databricks_bundles/databricks_us_regional.yml
@@ -111,16 +214,22 @@ databricks bundle deploy -t prod -c databricks_bundles/databricks_eu_regional.ym
 
 ### Via Dagster (Automatic)
 
-Dagster's `CustomDatabricksAssetBundleComponent` automatically manages bundle deployment:
-
-```yaml
-# Example: asset_bundle_etl_us/defs.yaml
-attributes:
-  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_us_etl.yml"
-  workspace:
-    host: "{{ env.DATABRICKS_US_HOST }}"
-```
+Dagster's `CustomDatabricksAssetBundleComponent` automatically manages bundle deployment based on the workspace configuration in each component.
 
 ## Demo Mode
 
 All bundles work in demo mode (`DAGSTER_DEMO_MODE=true`) without requiring real Databricks credentials or workspaces.
+
+```bash
+export DAGSTER_DEMO_MODE=true
+dagster dev
+```
+
+## Benefits of This Pattern
+
+✅ **DRY Principle**: Shared bundles eliminate duplication
+✅ **Scalable**: Add regions without modifying existing bundles
+✅ **Flexible**: Mix shared and region-specific bundles
+✅ **Maintainable**: Single source of truth for common tasks
+✅ **Collision-Free**: Unique op names via component configuration
+✅ **Standard Pattern**: Follows Databricks Asset Bundle best practices

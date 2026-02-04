@@ -87,6 +87,169 @@ This project demonstrates how Dagster orchestrates complex data workflows across
                                                     └──────────────────────┘
 ```
 
+## Key Implementation Patterns
+
+### Shared Project Consolidation (dbt & Databricks Bundles)
+
+This demo showcases advanced patterns for sharing configurations across regions while maintaining unique component identities:
+
+#### 1. Shared dbt Project Pattern
+
+**Problem**: Separate `us_analytics_dbt` and `eu_analytics_dbt` projects had identical SQL logic, violating DRY principles and creating maintenance overhead.
+
+**Solution**: Single `common_analytics_dbt` project with multi-target configuration:
+
+```yaml
+# dbt_projects/common_analytics_dbt/profiles.yml
+common_analytics_dbt:
+  target: "{{ env_var('DBT_TARGET', 'us') }}"
+  outputs:
+    us:
+      type: databricks
+      host: "{{ env_var('DATABRICKS_US_HOST') }}"
+      target: us
+    eu:
+      type: databricks
+      host: "{{ env_var('DATABRICKS_EU_HOST') }}"
+      target: eu
+```
+
+**Component Configuration**:
+```yaml
+# defs/dbt_us_common/defs.yaml
+attributes:
+  project:
+    project_dir: "{{ project_root }}/dbt_projects/common_analytics_dbt"
+    target: "us"  # Specifies which target to use
+
+  op:
+    name: "dbt_us_common"  # Unique op name per region
+
+  select: "source:*_us tag:us"  # Include only US sources and models
+```
+
+**Key Techniques**:
+- **State Key Uniqueness**: Uses dbt `target` parameter in state discriminator to create unique keys:
+  - `DbtProjectComponent[common_analytics_dbt,us]`
+  - `DbtProjectComponent[common_analytics_dbt,eu]`
+- **Op Naming**: Each component has unique `op.name` to avoid execution collisions
+- **Selective Loading**: `select` parameter filters sources/models by region (whitelist approach)
+- **Runtime Region Detection**: dbt models use `{{ target.name }}` to dynamically reference region-specific sources
+
+#### 2. Shared Databricks Bundle Pattern
+
+**Problem**: Separate `databricks_us_etl.yml` and `databricks_eu_etl.yml` had identical task definitions, creating duplication.
+
+**Solution**: Single `common_regional_etl.yml` bundle with resource includes:
+
+```yaml
+# databricks_bundles/common_regional_etl.yml
+bundle:
+  name: regional_data_etl
+
+include:
+  - resources/etl_jobs.yml  # Tasks defined in separate file
+
+targets:
+  us:
+    workspace:
+      host: ${DATABRICKS_US_HOST}
+  eu:
+    workspace:
+      host: ${DATABRICKS_EU_HOST}
+```
+
+**Resource Organization**:
+```
+databricks_bundles/
+├── common_regional_etl.yml          # Main bundle (targets only)
+├── databricks_us_regional.yml       # US-specific bundle
+├── databricks_eu_regional.yml       # EU-specific bundle
+└── resources/
+    ├── etl_jobs.yml                 # Shared ETL tasks
+    ├── us_regional_jobs.yml         # US compliance tasks
+    └── eu_regional_jobs.yml         # EU compliance tasks
+```
+
+**Component Configuration**:
+```yaml
+# defs/asset_bundle_etl_us/defs.yaml
+attributes:
+  databricks_config_path: "{{ project_root }}/databricks_bundles/common_regional_etl.yml"
+
+  op:
+    name: "etl_us"  # Unique op name per region
+
+  workspace:
+    host: "{{ env.DATABRICKS_US_HOST }}"  # Determines deployment target
+```
+
+**Key Techniques**:
+- **Include Pattern**: Databricks Asset Bundle parser requires tasks in included resource files (not inline)
+- **Op Naming**: Each component specifies unique `op.name` for collision-free execution
+- **Workspace Routing**: Component's workspace config determines deployment target independently of bundle targets
+
+### Op Naming Fixes (Critical for Multi-Component Patterns)
+
+#### dbt Component State Key Management
+
+**Custom Implementation** (in `CustomDbtProjectComponent`):
+
+```python
+@property
+def defs_state_config(self) -> DefsStateConfig:
+    """Override to include dbt target in discriminator for unique state keys."""
+    discriminator = self._project_manager.defs_state_discriminator
+
+    # Add dbt target to discriminator
+    if hasattr(self._project_manager, 'args') and hasattr(self._project_manager.args, 'target'):
+        target = self._project_manager.args.target
+        if target:
+            discriminator = f"{discriminator},{target}"
+
+    return DefsStateConfig(
+        key=f"DbtProjectComponent[{discriminator}]",
+        management_type=DefsStateManagementType.LOCAL_FILESYSTEM,
+        refresh_if_dev=self.prepare_if_dev,
+    )
+```
+
+**Result**: Unique state keys prevent "DuplicateDefsStateKeyWarning":
+- Before: `DbtProjectComponent[common_analytics_dbt]` (collision!)
+- After: `DbtProjectComponent[common_analytics_dbt,us]` and `DbtProjectComponent[common_analytics_dbt,eu]` ✅
+
+#### Databricks Asset Bundle Op Naming Fix
+
+**⚠️ IMPORTANT**: This fix is **not yet released** in `dagster-databricks`. The current release (0.28.12) has a bug where `op.name` replaces the entire op name instead of being used as a prefix.
+
+**Custom Implementation** (in `CustomDatabricksAssetBundleComponent.build_defs`):
+
+```python
+# FIXED: Use op.name as PREFIX, not full name
+op_prefix = self.op.name if self.op and self.op.name else "databricks"
+
+@multi_asset(
+    name=f"{op_prefix}_{task_key}_multi_asset_{component_defs_path_as_python_str}",
+    # ... rest of config
+)
+```
+
+**Result**: Unique op names when multiple components share bundles:
+- Before: All tasks get same name → collision
+- After: `etl_us_extract_customers_multi_asset_defs_asset_bundle_etl_us` ✅
+
+**When Upgrading**: Once Dagster releases this fix officially, you can remove the `build_defs` override and keep only the demo mode functionality.
+
+### Scaling Benefits
+
+**Adding APAC Region** now requires:
+
+1. **dbt**: Add APAC target to `common_analytics_dbt/profiles.yml`, create `defs/dbt_apac_common/defs.yaml` with `target: "apac"` and `select: "source:*_apac tag:apac"` ✅
+2. **Databricks Bundle**: Point new `asset_bundle_etl_apac` component to `common_regional_etl.yml` with `op.name: "etl_apac"` ✅
+3. **No changes needed** to existing US/EU configurations ✅
+
+This approach scales linearly - each new region is additive, not multiplicative.
+
 ## Key Features
 
 ### 1. Regional Multi-Workspace Architecture

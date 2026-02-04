@@ -1,0 +1,19 @@
+name: 'common_analytics_dbt'
+version: '1.0.0'
+config-version: 2
+
+profile: 'common_analytics_dbt'
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  common_analytics_dbt:
+    +materialized: view
+    silver:
+      +materialized: incremental
+    gold:
+      +materialized: table

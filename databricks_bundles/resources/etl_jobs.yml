@@ -1,25 +1,8 @@
-# Databricks Asset Bundle Configuration - US Regional ETL
-# Deployed to US workspace from shared ETL pattern
-
-bundle:
-  name: us_data_etl
-
-targets:
-  prod:
-    mode: production
-    workspace:
-      host: ${DATABRICKS_US_HOST}
-
-  dev:
-    mode: development
-    workspace:
-      host: ${DATABRICKS_US_HOST}
-
-# US Regional ETL extraction jobs
+# Regional ETL extraction jobs (works for both US and EU)
 resources:
   jobs:
-    us_regional_data_extract:
-      name: "US Regional Data Extract"
+    regional_data_extract:
+      name: "Regional Data Extract"
 
       tasks:
         - task_key: extract_customers

@@ -3,12 +3,16 @@ Custom Databricks Asset Bundle Component with demo mode support.
 
 Properly subclasses the official DatabricksAssetBundleComponent from dagster-databricks
 and adds demo mode support via DAGSTER_DEMO_MODE environment variable.
+
+Also includes fix for op naming to support multiple components with the same bundle
+by using op.name as a prefix rather than the full name.
 """
 
 import os
 from typing import Any
 
 from dagster_databricks import DatabricksAssetBundleComponent
+from dagster_databricks.utils import snake_case
 from dagster import (
     AssetExecutionContext,
     Definitions,
@@ -53,65 +57,91 @@ class CustomDatabricksAssetBundleComponent(DatabricksAssetBundleComponent):
 
     def build_defs(self, context: Any) -> Definitions:
         """
-        Override to add demo mode support.
+        Override to add demo mode support AND fix op naming issue.
 
-        This is the minimal override needed - we only change execution behavior
-        when demo_mode is enabled. Otherwise, we delegate to the official implementation.
+        The fix uses op.name as a PREFIX rather than the full name, ensuring
+        unique op names when multiple tasks exist or multiple components use
+        the same bundle. This matches the internal Dagster fix.
+
+        In demo mode: simulates execution without calling Databricks.
+        In production mode: uses fixed op naming with real execution.
         """
-        if not self.demo_mode:
-            # Real mode: use the official implementation
-            return super().build_defs(context)
+        # Check if there are any tasks - if not, return empty definitions
+        # This can happen if the databricks config has no tasks defined yet
+        try:
+            asset_specs_by_task_key = self.asset_specs_by_task_key
+            if not asset_specs_by_task_key:
+                return Definitions()
+        except Exception:
+            # If accessing asset_specs_by_task_key fails, return empty definitions
+            return Definitions()
 
-        # Demo mode: create custom assets with simulated execution
-        # Use the assets_by_task_key which are already AssetSpec objects from YAML
-        specs_by_task = self.assets_by_task_key or {}
-        all_specs = [spec for specs in specs_by_task.values() for spec in specs]
-
-        # Extract bundle name from the databricks config file path
-        # e.g., databricks_analytics.yml -> analytics
-        import re
-        config_filename = self.databricks_config_path.name if self.databricks_config_path else "unknown"
-        match = re.search(r'databricks_?(.+)\.yml', config_filename)
-        bundle_name = match.group(1) if match else "bundle"
-
-        @multi_asset(
-            name=f"databricks_bundle_{bundle_name}_demo",
-            specs=all_specs,
-            can_subset=True,
+        # Get component path for unique naming
+        component_defs_path_as_python_str = snake_case(
+            str(os.path.relpath(context.component_path.file_path, start=context.project_root))
         )
-        def _demo_execution_fn(context: AssetExecutionContext):
-            context.log.info(
-                f"[DEMO MODE] Simulating Databricks Asset Bundle execution"
-            )
-            context.log.info(f"[DEMO MODE] Bundle: {bundle_name}")
-            context.log.info(f"[DEMO MODE] Config: {self.databricks_config_path}")
-            context.log.info(f"[DEMO MODE] Selected assets: {context.selected_asset_keys}")
 
-            # Find which tasks need to run based on selected assets
-            tasks_to_run = set()
-            for task_key, specs in specs_by_task.items():
-                if any(spec.key in context.selected_asset_keys for spec in specs):
-                    tasks_to_run.add(task_key)
+        databricks_assets = []
 
-            context.log.info(f"[DEMO MODE] Tasks to execute: {tasks_to_run}")
+        # Iterate through tasks and create multi-assets with fixed naming
+        for task_key, asset_specs in asset_specs_by_task_key.items():
+            # FIXED: Use op.name as PREFIX, not full name
+            op_prefix = self.op.name if self.op and self.op.name else "databricks"
 
-            for spec in all_specs:
-                if spec.key in context.selected_asset_keys:
-                    # Find which task this asset belongs to
-                    task_key = next(
-                        (tk for tk, specs in specs_by_task.items() if spec in specs),
-                        "unknown"
+            if self.demo_mode:
+                # Demo mode: simulated execution
+                @multi_asset(
+                    name=f"{op_prefix}_{task_key}_multi_asset_{component_defs_path_as_python_str}",
+                    specs=asset_specs,
+                    can_subset=False,
+                    op_tags=self.op.tags if self.op else None,
+                    description=self.op.description if self.op else None,
+                    pool=self.op.pool if self.op else None,
+                    backfill_policy=self.op.backfill_policy if self.op else None,
+                )
+                def _demo_databricks_task_multi_asset(context: AssetExecutionContext):
+                    """Multi-asset that simulates Databricks job execution in demo mode."""
+                    context.log.info("[DEMO MODE] Simulating Databricks Asset Bundle execution")
+                    context.log.info(f"[DEMO MODE] Task: {task_key}")
+                    context.log.info(f"[DEMO MODE] Config: {self.databricks_config_path}")
+                    context.log.info(f"[DEMO MODE] Selected assets: {context.selected_asset_keys}")
+
+                    for spec in asset_specs:
+                        if spec.key in context.selected_asset_keys:
+                            yield MaterializeResult(
+                                asset_key=spec.key,
+                                metadata={
+                                    "demo_mode": True,
+                                    "databricks_task_key": task_key,
+                                    "databricks_config_path": str(self.databricks_config_path),
+                                    "simulated_status": "SUCCESS",
+                                },
+                            )
+
+                databricks_assets.append(_demo_databricks_task_multi_asset)
+            else:
+                # Production mode: real execution with fixed naming
+                @multi_asset(
+                    name=f"{op_prefix}_{task_key}_multi_asset_{component_defs_path_as_python_str}",
+                    specs=asset_specs,
+                    can_subset=False,
+                    op_tags=self.op.tags if self.op else None,
+                    description=self.op.description if self.op else None,
+                    pool=self.op.pool if self.op else None,
+                    backfill_policy=self.op.backfill_policy if self.op else None,
+                )
+                def _databricks_task_multi_asset(
+                    context: AssetExecutionContext,
+                    databricks: Any,
+                ):
+                    """Multi-asset that runs multiple assets of a task as a single Databricks job."""
+                    yield from databricks.submit_and_poll(
+                        component=self,
+                        context=context,
                     )
 
-                    yield MaterializeResult(
-                        asset_key=spec.key,
-                        metadata={
-                            "demo_mode": True,
-                            "databricks_bundle": bundle_name,
-                            "databricks_task_key": task_key,
-                            "databricks_config_path": str(self.databricks_config_path),
-                            "simulated_status": "SUCCESS",
-                        },
-                    )
+                databricks_assets.append(_databricks_task_multi_asset)
 
-        return Definitions(assets=[_demo_execution_fn])
+        # Don't include resources here - they're managed by the workspace component
+        # to avoid conflicts when multiple bundle components share resources
+        return Definitions(assets=databricks_assets)

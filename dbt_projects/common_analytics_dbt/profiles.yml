@@ -1,0 +1,17 @@
+common_analytics_dbt:
+  target: "{{ env_var('DBT_TARGET', 'us') }}"
+  outputs:
+    us:
+      type: databricks
+      host: "{{ env_var('DATABRICKS_US_HOST', 'https://us.databricks.com') }}"
+      http_path: /sql/1.0/warehouses/demo
+      token: "{{ env_var('DATABRICKS_US_TOKEN', 'demo-token-us') }}"
+      schema: us_analytics
+      threads: 4
+    eu:
+      type: databricks
+      host: "{{ env_var('DATABRICKS_EU_HOST', 'https://eu.databricks.com') }}"
+      http_path: /sql/1.0/warehouses/demo
+      token: "{{ env_var('DATABRICKS_EU_TOKEN', 'demo-token-eu') }}"
+      schema: eu_analytics
+      threads: 4

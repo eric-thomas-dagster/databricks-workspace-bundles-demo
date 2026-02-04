@@ -1,13 +1,17 @@
-# US Regional ETL Asset Bundle - Uses databricks_us_etl.yml
+# US Regional ETL Asset Bundle - Uses common_regional_etl.yml
 # Follows shared ETL pattern deployed to US workspace
 # Set DAGSTER_DEMO_MODE=true to enable demo mode simulation
 type: databricks_workspace_bundles_demo.components.CustomDatabricksAssetBundleComponent
 
 attributes:
-  # Path to US ETL databricks.yml configuration
-  databricks_config_path: "{{ project_root }}/databricks_bundles/databricks_us_etl.yml"
+  # Path to common regional ETL databricks.yml configuration
+  databricks_config_path: "{{ project_root }}/databricks_bundles/common_regional_etl.yml"
 
-  # Workspace connection
+  # Unique op name to avoid collisions with other region components
+  op:
+    name: "etl_us"
+
+  # Workspace connection (determines which region this deploys to)
   workspace:
     host: "{{ env.DATABRICKS_US_HOST | default('https://us.databricks.com') }}"
     token: "{{ env.DATABRICKS_US_TOKEN | default('demo-token-us') }}"

@@ -1,0 +1,4 @@
+locations:
+  - location_name: databricks_workspace_bundles_demo
+    code_source:
+      python_file: src/databricks_workspace_bundles_demo/definitions.py
