@@ -10,8 +10,8 @@ attributes:
   op:
     name: "dbt_eu_common"
 
-  # Select only EU-specific sources and all region-agnostic models
-  select: "source:*_eu tag:eu"
+  # Select only EU-tagged models (sources are dynamically referenced via target.name)
+  select: "tag:eu"
 
   # Translation: organize by medallion layer + region, clean names without prefix/suffix
   translation:
